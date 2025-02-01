@@ -1,0 +1,10 @@
+"determiningnetworkstatus" = "Determining network status..."
+"networknotavailable" = "It seems like you don't have an active Wireless connection right now. Cloudburst requires an on-line connection to function. Please connect to a Wi-Fi source and try again."
+"enterpostcode" = "Welcome to Cloudburst! First, please enter your postal code."
+"preference1" = "Next, please set your temperature preference."
+"preference2" = "Finally, please set your measurement preferences."
+"launch_firsttime" = "Thank you! Please wait while the server is being reached..."
+"launch" = "Welcome back! Please wait while the server is being reached..."
+
+"tryagain" = "Try again"
+"ok" = "OK!"
