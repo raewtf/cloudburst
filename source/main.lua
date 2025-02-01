@@ -25,7 +25,7 @@ gfx.setBackgroundColor(gfx.kColorWhite)
 function savecheck()
 	save = pd.datastore.read()
 	if save == nil then save = {} end
-	save.zip = save.zip or 90210
+	save.zip = save.zip or "90210"
 end
 
 -- ... now we run that!
@@ -109,9 +109,9 @@ scenemanager:switchscene(initialization)
 function pd.update()
 	if not vars.http_opened then
 		if vars.get_zip then
-			http = net.http.new("geocoding-api.open-meteo.com", 443, true)
+			http = net.http.new("geocoding-api.open-meteo.com", 443, true, "using your postal code to access location info.")
 		else
-			http = net.http.new("api.open-meteo.com", 443, true)
+			http = net.http.new("api.open-meteo.com", 443, true, "using your location info to retrieve local weather.")
 			vars.get_weather = true
 		end
 		assert(http, 'Please allow network connection to use this app! If you\'ve selected \'Never\', clear out the app\'s data from your Data Disk to continue.')
