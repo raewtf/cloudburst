@@ -4,6 +4,7 @@ import 'CoreLibs/timer'
 import 'CoreLibs/object'
 import 'CoreLibs/sprites'
 import 'CoreLibs/graphics'
+import 'CoreLibs/keyboard'
 import 'CoreLibs/animation'
 import 'scenemanager'
 import 'initialization'
@@ -20,12 +21,18 @@ local text <const> = gfx.getLocalizedText
 
 pd.display.setRefreshRate(30)
 gfx.setBackgroundColor(gfx.kColorWhite)
+gfx.setLineWidth(2)
 
 -- Save check
 function savecheck()
 	save = pd.datastore.read()
 	if save == nil then save = {} end
-	save.zip = save.zip or "90210"
+	save.area = save.area or ""
+	save.area_result = save.area_result or 0
+	save.temp = save.temp or "celsius"
+	save.speed = save.speed or "kph"
+	save.meas = save.meas or "mm"
+	if save.setup == nil then save.setup = true end
 end
 
 -- ... now we run that!
@@ -101,23 +108,21 @@ function pd.timer:resetnew(duration, startValue, endValue, easingFunction)
 	self.timerEndedCallback = self.timerEndedCallback
 end
 
-zip_response_json = {}
-weather_response_json = {}
-
 scenemanager:switchscene(initialization)
 
 function pd.update()
 	if not vars.http_opened then
-		if vars.get_zip then
-			http = net.http.new("geocoding-api.open-meteo.com", 443, true, "using your postal code to access location info.")
+		if vars.get_area then
+			http = net.http.new("geocoding-api.open-meteo.com", 443, true, "using your local area to access location info.")
 		else
 			http = net.http.new("api.open-meteo.com", 443, true, "using your location info to retrieve local weather.")
 			vars.get_weather = true
 		end
-		assert(http, 'Please allow network connection to use this app! If you\'ve selected \'Never\', clear out the app\'s data from your Data Disk to continue.')
+		assert(http, 'Hi! Sorry about the crash, but it was the best way to reach you. Please allow access to the network connection gates to use this app! If you\'ve accidentally selected \'Never\', clear out the app\'s data from your Data Disk to continue - it\'s in the "wtf.rae.cloudburst" folder.')
 		vars.http_opened = true
 	end
 	-- Catch-all stuff ...
 	gfx.sprite.update()
 	pd.timer.updateTimers()
+	pd.drawFPS(10, 10)
 end

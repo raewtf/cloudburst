@@ -3,5 +3,5 @@ author=rae
 description=Check your local real-time weather, on your Playdate!
 bundleID=wtf.rae.cloudburst
 version=0.5.0
-buildNumber=148
+buildNumber=471
 imagePath=images/system

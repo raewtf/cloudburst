@@ -10,8 +10,23 @@ function weather:init(...)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(false) -- Should this scene redraw the sprites constantly?
 
+	function pd.gameWillPause()
+		local menu = pd.getSystemMenu()
+		menu:removeAllMenuItems()
+		menu:addMenuItem(text('changeaream'), function()
+			scenemanager:switchscene(initialization, "changearea")
+		end)
+		menu:addMenuItem(text('changetempm'), function()
+			scenemanager:switchscene(initialization, "changetemp")
+		end)
+		menu:addMenuItem(text('changemeasm'), function()
+			scenemanager:switchscene(initialization, "changemeas")
+		end)
+	end
+
 	assets = {
 		sasser = gfx.font.new('fonts/sasser'),
+		roobert11 = gfx.font.new('fonts/roobert11'),
 		roobert24 = gfx.font.new('fonts/roobert24')
 	}
 
@@ -20,7 +35,7 @@ function weather:init(...)
 	}
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
-		assets.sasser:drawText('Weather in ' .. zip_response_json.results[1].admin1 .. ', ' .. zip_response_json.results[1].country_code, 10, 10)
+		assets.sasser:drawText('Weather in ' .. area_response_json.results[save.area_result].name, 10, 10)
 		assets.roobert24:drawText(weather_response_json.current.temperature_2m .. weather_response_json.current_units.temperature_2m, 10, 30)
 	end)
 

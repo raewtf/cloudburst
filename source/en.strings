@@ -1,10 +1,45 @@
-"determiningnetworkstatus" = "Determining network status..."
-"networknotavailable" = "It seems like you don't have an active Wireless connection right now. Cloudburst requires an on-line connection to function. Please connect to a Wi-Fi source and try again."
-"enterpostcode" = "Welcome to Cloudburst! First, please enter your postal code."
-"preference1" = "Next, please set your temperature preference."
-"preference2" = "Finally, please set your measurement preferences."
-"launch_firsttime" = "Thank you! Please wait while the server is being reached..."
-"launch" = "Welcome back! Please wait while the server is being reached..."
+"welcome1" = "Hello!"
+"welcome1_text" = "This is Cloudburst!\nPlease input your\nlocal city name, or\na U.S. ZIP code."
+"setup1" = "Temperature"
+"setup1_text" = "Next, please set your temperature\npreference. Celsius, or Fahrenheit?"
+"setup2" = "Measurement"
+"setup2_text" = "Finally, please set your measurement\npreference. Metric, or imperial?"
+"welcome2" = "Welcome to Cloudburst!"
+"welcome2_text" = "Thank you! Press Ⓐ and press \"Allow\"\non the following two prompts to begin.\n\n(Cloudburst requires OS permissions to\ntransmit weather data. If you don't allow\nthese permissions, the app will close.)"
 
-"tryagain" = "Try again"
-"ok" = "OK!"
+"choosearea" = "Choose Your Area"
+"choosearea_text" = "There are multiple results for the area\nyou've inputted. Please choose yours."
+
+"noarea" = "Ooooops!"
+"noarea_text" = "No data found!\nPlease input some\nother city name, or\na U.S. ZIP code."
+
+"changearea" = "Change Area"
+"changearea_text" = "On the move?\nPlease input your\nlocal city name, or\na U.S. ZIP code."
+"changetemp" = "Change Temperature"
+"changetemp_text" = "Please set your new temperature\npreference. Celsius, or Fahrenheit?"
+"changemeas" = "Change Measurement"
+"changemeas_text" = "Please set your new measurement\npreference. Metric, or imperial?"
+
+"nointernet" = "No Internet!"
+"nointernet_text" = "It doesn't seem like you're connected\nto the Internet! Cloudburst requires an\nactive Wireless connection to\nretrieve weather info. Please find a stable\nWi-Fi access point, and try again."
+
+"whereareyou" = "Where Are You?"
+"whereareyou_text" = "Please select your location."
+
+"changeaream" = "change area"
+"changetempm" = "change temp"
+"changemeasm" = "change meas"
+
+"contacting" = "contacting the server, please wait..."
+"contacting_wb" = "welcome back! contacting the server, please wait..."
+
+"fahrenheit" = "Fahrenheit!"
+"celsius" = "Celsius!"
+
+"imperial" = "Imperial!"
+"metric" = "Metric!"
+
+"keyboard" = "Ⓐ Keyboard"
+"select" = "Ⓐ Select"
+"ok" = "Ⓐ OK"
+"tryagain" = "Ⓐ Try Again"
