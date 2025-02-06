@@ -31,7 +31,7 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup1")
 			end)
-		elseif bool and (vars.prompt == "changearea" or vars.prompt == "noarea") then
+		elseif bool and (vars.prompt == "changearea" or vars.prompt == "noarea" or vars.prompt == "whereareyouarea") then
 			self:closeui()
 			save.area = vars.text
 			pd.timer.performAfterDelay(300, function()
@@ -67,6 +67,7 @@ function initialization:init(...)
 		weather_response_formatted = nil,
 		stars_l = pd.timer.new(45000, -400, 0),
 		stars_s = pd.timer.new(30000, -400, 0),
+		satellite_timer = pd.timer.new(15000, -1, 1),
 		ui_timer = pd.timer.new(1, 240, 240),
 		crank_change = 0,
 		ui_open = false,
@@ -83,6 +84,7 @@ function initialization:init(...)
 		results = 0,
 		result = 1,
 		result_timer = pd.timer.new(1, 1, 1),
+		iwarnedyouabouthttpbroitoldyoudog = true,
 	}
 	vars.welcome1Handlers = {
 		AButtonDown = function()
@@ -114,6 +116,13 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup2")
 			end)
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				self:openui("welcome1")
+			end)
 		end
 	}
 	vars.setup2Handlers = {
@@ -143,6 +152,13 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("welcome2")
 			end)
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				self:openui("setup1")
+			end)
 		end
 	}
 	vars.welcome2Handlers = {
@@ -151,6 +167,13 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				vars.http_opened = false
 				vars.get_area = true
+			end)
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				self:openui("setup2")
 			end)
 		end
 	}
@@ -164,62 +187,9 @@ function initialization:init(...)
 			pd.keyboard.show()
 		end
 	}
-	vars.changetempHandlers = {
-		leftButtonDown = function()
-			if vars.setup1_selection == 1 then
-			else
-				vars.setup1_selection = 1
-			end
-		end,
-
-		rightButtonDown = function()
-			if vars.setup1_selection == 2 then
-			else
-				vars.setup1_selection = 2
-			end
-		end,
-
+	vars.whereareyouareaHandlers = {
 		AButtonDown = function()
-			self:closeui()
-			if vars.setup1_selection == 1 then
-				save.temp = "celsius"
-			elseif vars.setup1_selection == 2 then
-				save.temp = "fahrenheit"
-			end
-			pd.timer.performAfterDelay(300, function()
-				vars.http_opened = false
-				vars.get_area = true
-			end)
-		end
-	}
-	vars.changemeasHandlers = {
-		leftButtonDown = function()
-			if vars.setup2_selection == 1 then
-			else
-				vars.setup2_selection = 1
-			end
-		end,
-
-		rightButtonDown = function()
-			if vars.setup2_selection == 2 then
-			else
-				vars.setup2_selection = 2
-			end
-		end,
-
-		AButtonDown = function()
-			self:closeui()
-			if vars.setup2_selection == 1 then
-				save.speed = "kph"
-				save.meas = "mm"
-			elseif vars.setup2_selection == 2 then
-				save.speed = "mph"
-				save.meas = "inch"
-			end
-			pd.timer.performAfterDelay(300, function()
-				vars.http_opened = false
-				vars.get_area = true
-			end)
+			pd.keyboard.show()
 		end
 	}
 	vars.whereareyouHandlers = {
@@ -238,12 +208,20 @@ function initialization:init(...)
 				vars.result_timer:resetnew(100, vars.result_timer.value, vars.result)
 			end
 		end,
+
 		AButtonDown = function()
 			self:closeui()
 			save.area_result = vars.result
 			pd.timer.performAfterDelay(300, function()
 				vars.http_opened = false
 				vars.get_weather = true
+			end)
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				self:openui("whereareyouarea")
 			end)
 		end
 	}
@@ -272,6 +250,8 @@ function initialization:init(...)
 	vars.earth_timer.repeats = true
 	vars.stars_l.repeats = true
 	vars.stars_s.repeats = true
+	vars.satellite_timer.reverses = true
+	vars.satellite_timer.repeats = true
 	vars.ui_timer.discardOnCompletion = false
 	vars.ticker_timer_x.discardOnCompletion = false
 	vars.ticker_timer_y.discardOnCompletion = false
@@ -296,13 +276,13 @@ function initialization:init(...)
 				assets.smallcaps:drawText(vars.ticker_string, vars.ticker_timer_x.value, vars.ticker_timer_y.value + 5)
 			end
 			if vars.ui_open then
-				if vars.prompt == "welcome1" or vars.prompt == "changearea" or vars.prompt == "noarea" then
+				if vars.prompt == "welcome1" or vars.prompt == "changearea" or vars.prompt == "noarea" or vars.prompt == "whereareyouarea" then
 					assets.roobert11:drawTextAligned(vars.text, 200 + (pd.keyboard.left() - 400) / 2, 155 + vars.ui_timer.value, kTextAlignment.center)
-				elseif vars.prompt == "setup1" or vars.prompt == "changetemp" then
+				elseif vars.prompt == "setup1" then
 					gfx.setColor(gfx.kColorWhite)
 					gfx.drawRoundRect((vars.setup1_selection == 1 and 35 or 225), 115 + vars.ui_timer.value, 140, 50, 8)
 					gfx.setColor(gfx.kColorBlack)
-				elseif vars.prompt == "setup2" or vars.prompt == "changemeas" then
+				elseif vars.prompt == "setup2" then
 					gfx.setColor(gfx.kColorWhite)
 					gfx.drawRoundRect((vars.setup2_selection == 1 and 35 or 225), 115 + vars.ui_timer.value, 140, 50, 8)
 					gfx.setColor(gfx.kColorBlack)
@@ -348,103 +328,102 @@ end
 function initialization:update()
 	vars.crank_change += pd.getCrankChange()
 	if vars.get_area then
-		if save.setup then
-			self:openticker(text("contacting"))
-			save.setup = false
+		if net.getStatus() == net.kStatusNotAvailable then
+			self:openui("nointernet")
 		else
-			self:openticker(text("contacting_wb"))
-		end
-		http:get("/v1/search?name=" .. save.area .. "&count=10&language=en&format=json")
-		http:setRequestCompleteCallback(function()
-			http:setConnectTimeout(10)
-			local bytes = http:getBytesAvailable()
-			vars.area_response = http:read(bytes)
-			if string.find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
-				self:closeticker()
-				self:openui("noarea")
-				vars.text = ""
-				http:close()
-				return
+			if first_check and not save.setup then
+				self:openticker(text("contacting_wb"))
+				first_check = false
 			else
+				self:openticker(text("contacting"))
+			end
+			if save.setup then
+				save.setup = false
+			end
+			http:get("/v1/search?name=" .. save.area .. "&count=10&language=en&format=json")
+			http:setRequestCompleteCallback(function()
+				http:setConnectTimeout(10)
+				local bytes = http:getBytesAvailable()
+				vars.area_response = http:read(bytes)
+				if string.find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
+					self:closeticker()
+					self:openui("noarea")
+					http:close()
+					return
+				else
+					local response_start = 0
+					local response_end = 0
+					for i = 1, string.len(vars.area_response) do
+						if string.byte(vars.area_response, i) == string.byte("{") then
+							response_start = i
+							break
+						end
+					end
+					for i = string.len(vars.area_response), 1, -1 do
+						if string.byte(vars.area_response, i) == string.byte("}") then
+							response_end = i
+							break
+						end
+					end
+					vars.area_response_formatted = string.sub(vars.area_response, response_start, response_end)
+					area_response_json = json.decode(vars.area_response_formatted)
+					http:close()
+				end
+				if area_response_json.results == nil then
+					self:closeticker()
+					self:openui("noarea")
+				else
+					vars.results = #area_response_json.results
+					if vars.results > 1 and save.area_result == 0 then
+						self:closeticker()
+						vars.result = 1
+						self:openui("whereareyou")
+					else
+						save.area_result = 1
+						vars.http_opened = false
+						vars.get_weather = true
+					end
+				end
+			end)
+		end
+		vars.get_area = false
+	end
+	if vars.get_weather then
+		if net.getStatus() == net.kStatusNotAvailable then
+			self:openui("nointernet")
+		else
+			if not vars.ticker_open then
+				self:openticker(text("contacting"))
+			end
+			local speed = ""
+			local meas = ""
+			local temp = ""
+			http:get("https://api.open-meteo.com/v1/forecast?latitude=".. area_response_json.results[save.area_result].latitude .."&longitude=" .. area_response_json.results[save.area_result].longitude .. "&current=relative_humidity_2m,temperature_2m,weather_code,apparent_temperature,precipitation,is_day&hourly=temperature_2m,weather_code,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code&timezone="  .. area_response_json.results[save.area_result].timezone .. "&forecast_days=2&timeformat=unixtime")
+			http:setRequestCompleteCallback(function()
+				http:setConnectTimeout(10)
+				local bytes = http:getBytesAvailable()
+				vars.weather_response = http:read(bytes)
 				local response_start = 0
 				local response_end = 0
-				for i = 1, string.len(vars.area_response) do
-					if string.byte(vars.area_response, i) == string.byte("{") then
+				for i = 1, string.len(vars.weather_response) do
+					if string.byte(vars.weather_response, i) == string.byte("{") then
 						response_start = i
 						break
 					end
 				end
-				for i = string.len(vars.area_response), 1, -1 do
-					if string.byte(vars.area_response, i) == string.byte("}") then
+				for i = string.len(vars.weather_response), 1, -1 do
+					if string.byte(vars.weather_response, i) == string.byte("}") then
 						response_end = i
 						break
 					end
 				end
-				vars.area_response_formatted = string.sub(vars.area_response, response_start, response_end)
-				area_response_json = json.decode(vars.area_response_formatted)
-				printTable(area_response_json)
+				vars.weather_response_formatted = string.sub(vars.weather_response, response_start, response_end)
+				weather_response_json = json.decode(vars.weather_response_formatted)
 				http:close()
-			end
-			if area_response_json.results == nil then
 				self:closeticker()
-				self:openui("noarea")
-				vars.text = ""
-			else
-				vars.results = #area_response_json.results
-				if vars.results > 1 and save.area_result == 0 then
-					self:closeticker()
-					self:openui("whereareyou")
-				else
-					save.area_result = 1
-					vars.http_opened = false
-					vars.get_weather = true
-				end
-			end
-		end)
-		vars.get_area = false
-	end
-	if vars.get_weather then
-		if not vars.ticker_open then
-			self:openticker(text("contacting"))
+				scenemanager:transitionscene(weather)
+			end)
 		end
-		local speed = ""
-		local meas = ""
-		local temp = ""
-		if save.speed == "mph" then
-			speed = "&wind_speed_unit=mph"
-		end
-		if save.meas == "inch" then
-			speed = "&precipitation_unit=inch"
-		end
-		if save.temp == "fahrenheit" then
-			temp = "&temperature_unit=fahrenheit"
-		end
-		http:get("https://api.open-meteo.com/v1/forecast?latitude=".. area_response_json.results[save.area_result].latitude .."&longitude=" .. area_response_json.results[save.area_result].longitude .. "&current=temperature_2m,apparent_temperature,is_day,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset" .. temp .. meas .. speed .. "&timezone="  .. area_response_json.results[save.area_result].timezone .. "&forecast_days=1&timeformat=unixtime")
-		http:setRequestCompleteCallback(function()
-			http:setConnectTimeout(10)
-			local bytes = http:getBytesAvailable()
-			vars.weather_response = http:read(bytes)
-			local response_start = 0
-			local response_end = 0
-			for i = 1, string.len(vars.weather_response) do
-				if string.byte(vars.weather_response, i) == string.byte("{") then
-					response_start = i
-					break
-				end
-			end
-			for i = string.len(vars.weather_response), 1, -1 do
-				if string.byte(vars.weather_response, i) == string.byte("}") then
-					response_end = i
-					break
-				end
-			end
-			vars.weather_response_formatted = string.sub(vars.weather_response, response_start, response_end)
-			weather_response_json = json.decode(vars.weather_response_formatted)
-			printTable(weather_response_json)
-			http:close()
-			self:closeticker()
-			scenemanager:switchscene(weather)
-		end)
 		vars.get_weather = false
 	end
 end
@@ -478,14 +457,15 @@ function initialization:openui(prompt)
 		assets.ashe:drawTextAligned(text(prompt), 200, 20, kTextAlignment.center)
 		assets.roobert11:drawTextAligned(text(prompt .. '_text'), 200, 55, kTextAlignment.center)
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
-		if prompt == "welcome1" or prompt == "changearea" or prompt == "noarea" then
+		if prompt == "welcome1" or prompt == "changearea" or prompt == "noarea" or prompt == "whereareyouarea" then
 			gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
 			gfx.fillRoundRect(40, 150, 320, 30, 5)
 			gfx.setColor(gfx.kColorWhite)
 			gfx.drawRoundRect(40, 150, 320, 30, 5)
 			gfx.setColor(gfx.kColorBlack)
+			vars.text = ""
 			assets.roobert11:drawTextAligned(text('keyboard'), 200, 200, kTextAlignment.center)
-		elseif prompt == "setup1" or prompt == "changetemp" then
+		elseif prompt == "setup1" then
 			gfx.setColor(gfx.kColorWhite)
 			gfx.fillRoundRect(40, 120, 130, 40, 5)
 			gfx.fillRoundRect(230, 120, 130, 40, 5)
@@ -493,7 +473,7 @@ function initialization:openui(prompt)
 			assets.roobert11:drawTextAligned(text('select'), 200, 200, kTextAlignment.center)
 			assets.roobert11:drawTextAligned(text('celsius'), 105, 130, kTextAlignment.center)
 			assets.roobert11:drawTextAligned(text('fahrenheit'), 295, 130, kTextAlignment.center)
-		elseif prompt == "setup2" or prompt == "changemeas" then
+		elseif prompt == "setup2" then
 			gfx.setColor(gfx.kColorWhite)
 			gfx.fillRoundRect(40, 120, 130, 40, 5)
 			gfx.fillRoundRect(230, 120, 130, 40, 5)
@@ -509,7 +489,7 @@ function initialization:openui(prompt)
 			gfx.setColor(gfx.kColorWhite)
 			gfx.drawRoundRect(35, 90, 330, 90, 5)
 			gfx.setColor(gfx.kColorBlack)
-			assets.roobert11:drawTextAligned(text('select'), 200, 200, kTextAlignment.center)
+			assets.roobert11:drawTextAligned(text('selectwhere'), 200, 200, kTextAlignment.center)
 		elseif prompt == "nointernet" then
 			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
 		end

@@ -1,7 +1,7 @@
 name=Cloudburst
 author=rae
-description=Check your local real-time weather, on your Playdate!
+description=Check your local weather, on your Playdate! It's weather, untethered.
 bundleID=wtf.rae.cloudburst
 version=0.5.0
-buildNumber=471
+buildNumber=815
 imagePath=images/system

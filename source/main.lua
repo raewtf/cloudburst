@@ -1,6 +1,9 @@
+classes = {}
+
 -- Importing things
 import 'CoreLibs/math'
 import 'CoreLibs/timer'
+import 'CoreLibs/crank'
 import 'CoreLibs/object'
 import 'CoreLibs/sprites'
 import 'CoreLibs/graphics'
@@ -9,6 +12,8 @@ import 'CoreLibs/animation'
 import 'scenemanager'
 import 'initialization'
 import 'weather'
+import 'options'
+import 'credits'
 scenemanager = scenemanager()
 
 -- Setting up basic SDK params
@@ -23,6 +28,9 @@ pd.display.setRefreshRate(30)
 gfx.setBackgroundColor(gfx.kColorWhite)
 gfx.setLineWidth(2)
 
+first_check = true
+overlay = gfx.image.new('images/overlay')
+
 -- Save check
 function savecheck()
 	save = pd.datastore.read()
@@ -32,6 +40,8 @@ function savecheck()
 	save.temp = save.temp or "celsius"
 	save.speed = save.speed or "kph"
 	save.meas = save.meas or "mm"
+	save.refresh = save.refresh or "1hr"
+	save.autolock = save.autolock or 20
 	if save.setup == nil then save.setup = true end
 end
 
@@ -84,6 +94,36 @@ function newmusic(file, loop, range)
 	end
 end
 
+-- ref: https://gist.github.com/ignisdesign/4323051
+-- ref: http://stackoverflow.com/questions/20282054/how-to-urldecode-a-request-uri-string-in-lua
+-- to encode table as parameters, see https://github.com/stuartpb/tvtropes-lua/blob/master/urlencode.lua
+char_to_hex = function(c)
+  return string.format("%%%02X", string.byte(c))
+end
+
+function urlencode(url)
+  if url == nil then
+	return
+  end
+  url = url:gsub("\n", "\r\n")
+  url = url:gsub("([^%w ])", char_to_hex)
+  url = url:gsub(" ", "+")
+  return url
+end
+
+hex_to_char = function(x)
+  return string.char(tonumber(x, 16))
+end
+
+urldecode = function(url)
+  if url == nil then
+	return
+  end
+  url = url:gsub("+", " ")
+  url = url:gsub("%%(%x%x)", hex_to_char)
+  return url
+end
+
 function pd.timer:resetnew(duration, startValue, endValue, easingFunction)
 	self.duration = duration
 	if startValue ~= nil then
@@ -108,10 +148,10 @@ function pd.timer:resetnew(duration, startValue, endValue, easingFunction)
 	self.timerEndedCallback = self.timerEndedCallback
 end
 
-scenemanager:switchscene(initialization)
+scenemanager:transitionsceneout(initialization)
 
 function pd.update()
-	if not vars.http_opened then
+	if not vars.http_opened and vars.iwarnedyouabouthttpbroitoldyoudog then
 		if vars.get_area then
 			http = net.http.new("geocoding-api.open-meteo.com", 443, true, "using your local area to access location info.")
 		else
@@ -124,5 +164,6 @@ function pd.update()
 	-- Catch-all stuff ...
 	gfx.sprite.update()
 	pd.timer.updateTimers()
-	pd.drawFPS(10, 10)
+	-- pd.drawFPS(10, 10)
+	overlay:draw(0, 0)
 end
