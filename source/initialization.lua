@@ -4,6 +4,13 @@ local net <const> = pd.network
 local gfx <const> = pd.graphics
 local smp <const> = pd.sound.sampleplayer
 local text <const> = gfx.getLocalizedText
+local floor <const> = math.floor
+local random <const> = math.random
+local lower <const> = string.lower
+local find <const> = string.find
+local len <const> = string.len
+local byte <const> = string.byte
+local sub <const> = string.sub
 
 class('initialization').extends(gfx.sprite) -- Create the scene's class
 function initialization:init(...)
@@ -43,7 +50,6 @@ function initialization:init(...)
 
 	assets = {
 		roobert11 = gfx.font.new('fonts/roobert11'),
-		roobert24 = gfx.font.new('fonts/roobert24'),
 		ashe = gfx.font.new('fonts/ashe'),
 		sasser = gfx.font.new('fonts/sasser'),
 		smallcaps = gfx.font.new('fonts/smallcaps'),
@@ -52,11 +58,23 @@ function initialization:init(...)
 		stars_s = gfx.image.new('images/stars_s'),
 		stars_l = gfx.image.new('images/stars_l'),
 		ui = gfx.image.new('images/ui_buttons'),
+		sfx_ui = smp.new('audio/sfx/ui'),
+		error = smp.new('audio/sfx/error'),
+		move = smp.new('audio/sfx/move'),
+		select = smp.new('audio/sfx/select'),
+		connect = smp.new('audio/sfx/connect'),
+		back = smp.new('audio/sfx/back'),
+		crank = smp.new('audio/sfx/crank'),
 	}
+
+	gfx.setFont(assets.roobert11)
 
 	vars = {
 		prompttoopen = args[1],
 		earth_timer = pd.timer.new(30000, 1, 300),
+		stars_l = pd.timer.new(45000, -400, 0),
+		stars_s = pd.timer.new(30000, -400, 0),
+		crank_change = 0,
 		http_opened = true,
 		http = nil,
 		get_area = false,
@@ -65,11 +83,7 @@ function initialization:init(...)
 		get_weather = false,
 		weather_response = nil,
 		weather_response_formatted = nil,
-		stars_l = pd.timer.new(45000, -400, 0),
-		stars_s = pd.timer.new(30000, -400, 0),
-		satellite_timer = pd.timer.new(15000, -1, 1),
 		ui_timer = pd.timer.new(1, 240, 240),
-		crank_change = 0,
 		ui_open = false,
 		ticker_open = false,
 		ui_closing = false,
@@ -89,12 +103,14 @@ function initialization:init(...)
 	vars.welcome1Handlers = {
 		AButtonDown = function()
 			pd.keyboard.show()
+			if save.sfx then assets.select:play() end
 		end
 	}
 	vars.setup1Handlers = {
 		leftButtonDown = function()
 			if vars.setup1_selection == 1 then
 			else
+				if save.sfx then assets.move:play() end
 				vars.setup1_selection = 1
 			end
 		end,
@@ -102,6 +118,7 @@ function initialization:init(...)
 		rightButtonDown = function()
 			if vars.setup1_selection == 2 then
 			else
+				if save.sfx then assets.move:play() end
 				vars.setup1_selection = 2
 			end
 		end,
@@ -116,6 +133,7 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup2")
 			end)
+			if save.sfx then assets.select:play() end
 		end,
 
 		BButtonDown = function()
@@ -123,12 +141,14 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("welcome1")
 			end)
+			if save.sfx then assets.back:play() end
 		end
 	}
 	vars.setup2Handlers = {
 		leftButtonDown = function()
 			if vars.setup2_selection == 1 then
 			else
+				if save.sfx then assets.move:play() end
 				vars.setup2_selection = 1
 			end
 		end,
@@ -136,6 +156,7 @@ function initialization:init(...)
 		rightButtonDown = function()
 			if vars.setup2_selection == 2 then
 			else
+				if save.sfx then assets.move:play() end
 				vars.setup2_selection = 2
 			end
 		end,
@@ -149,6 +170,7 @@ function initialization:init(...)
 				save.speed = "mph"
 				save.meas = "inch"
 			end
+			if save.sfx then assets.select:play() end
 			pd.timer.performAfterDelay(300, function()
 				self:openui("welcome2")
 			end)
@@ -159,6 +181,7 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup1")
 			end)
+			if save.sfx then assets.back:play() end
 		end
 	}
 	vars.welcome2Handlers = {
@@ -168,6 +191,7 @@ function initialization:init(...)
 				vars.http_opened = false
 				vars.get_area = true
 			end)
+			if save.sfx then assets.select:play() end
 		end,
 
 		BButtonDown = function()
@@ -175,38 +199,56 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup2")
 			end)
+			if save.sfx then assets.back:play() end
 		end
 	}
 	vars.noareaHandlers = {
 		AButtonDown = function()
 			pd.keyboard.show()
+			if save.sfx then assets.select:play() end
 		end
 	}
 	vars.changeareaHandlers = {
 		AButtonDown = function()
 			pd.keyboard.show()
+			if save.sfx then assets.select:play() end
 		end
 	}
 	vars.whereareyouareaHandlers = {
 		AButtonDown = function()
 			pd.keyboard.show()
+			if save.sfx then assets.select:play() end
 		end
 	}
 	vars.whereareyouHandlers = {
 		upButtonDown = function()
-			if vars.result == 1 then
-			else
-				vars.result -= 1
-				vars.result_timer:resetnew(100, vars.result_timer.value, vars.result)
-			end
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
+				if vars.result > 1 then
+					if save.sfx then assets.move:play() end
+					vars.result -= 1
+					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+				end
+			end)
+		end,
+
+		upButtonUp = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
 		end,
 
 		downButtonDown = function()
-			if vars.result == vars.results then
-			else
-				vars.result += 1
-				vars.result_timer:resetnew(100, vars.result_timer.value, vars.result)
-			end
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
+				if vars.result < vars.results then
+					if save.sfx then assets.move:play() end
+					vars.result += 1
+					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+				end
+			end)
+		end,
+
+		downButtonUp = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
 		end,
 
 		AButtonDown = function()
@@ -216,6 +258,7 @@ function initialization:init(...)
 				vars.http_opened = false
 				vars.get_weather = true
 			end)
+			if save.sfx then assets.select:play() end
 		end,
 
 		BButtonDown = function()
@@ -223,6 +266,7 @@ function initialization:init(...)
 			pd.timer.performAfterDelay(300, function()
 				self:openui("whereareyouarea")
 			end)
+			if save.sfx then assets.back:play() end
 		end
 	}
 	vars.nointernetHandlers = {
@@ -243,6 +287,7 @@ function initialization:init(...)
 						end
 					end
 				end
+				if save.sfx then assets.select:play() end
 			end)
 		end
 	}
@@ -250,18 +295,16 @@ function initialization:init(...)
 	vars.earth_timer.repeats = true
 	vars.stars_l.repeats = true
 	vars.stars_s.repeats = true
-	vars.satellite_timer.reverses = true
-	vars.satellite_timer.repeats = true
 	vars.ui_timer.discardOnCompletion = false
 	vars.ticker_timer_x.discardOnCompletion = false
 	vars.ticker_timer_y.discardOnCompletion = false
 	vars.result_timer.discardOnCompletion = false
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
-		assets.bg[math.floor(math.random(1, 3))]:draw(0, 0)
+		assets.bg[floor(random(1, 3))]:draw(0, 0)
 		assets.stars_s:draw(((vars.stars_s.value + vars.crank_change) % 400) - 400, 0)
 		assets.stars_l:draw(((vars.stars_l.value + (vars.crank_change / 1.2)) % 400) - 400, 0)
-		assets.earth[math.floor((vars.earth_timer.value + (vars.crank_change / 1.8)) % 299) + 1]:draw(100, 140)
+		assets.earth[floor((vars.earth_timer.value + (vars.crank_change / 1.8)) % 299) + 1]:draw(100, 140)
 		if vars.ticker_open then
 			gfx.fillRect(0, vars.ticker_timer_y.value, 400, 27)
 			gfx.setColor(gfx.kColorWhite)
@@ -269,7 +312,7 @@ function initialization:init(...)
 			gfx.setColor(gfx.kColorBlack)
 		end
 		if vars.ui_open then
-			assets.draw_ui:draw(0 + math.floor(((pd.keyboard.left() - 400) / 2) / 2) * 2, math.floor(vars.ui_timer.value / 2) * 2)
+			assets.draw_ui:draw(0 + (((pd.keyboard.left() - 400) / 2) // 2) * 2, floor(vars.ui_timer.value / 2) * 2)
 		end
 		gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 			if vars.ticker_open then
@@ -289,12 +332,19 @@ function initialization:init(...)
 				elseif vars.prompt == "whereareyou" then
 					gfx.setClipRect(35, 90 + vars.ui_timer.value, 330, 90)
 					for i = 1, vars.results do
-						if area_response_json.results[i].name ~= nil then
-							assets.roobert11:drawText(area_response_json.results[i].name, 50, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value))
-						end
 						if area_response_json.results[i].admin1 ~= nil then
-							assets.smallcaps:drawTextAligned(string.lower(area_response_json.results[i].admin1), 350, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.right)
+							assets.smallcaps:drawTextAligned(lower(area_response_json.results[i].admin1), 350, 126 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.right)
 						end
+						local truncwidth = assets.smallcaps:getTextWidth(lower(area_response_json.results[i].admin1 or ''))
+						if area_response_json.results[i].name ~= nil then
+							gfx.drawTextInRect(area_response_json.results[i].name, 90, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 300 - truncwidth - 50, 25, 0, '...')
+						end
+						gfx.setColor(gfx.kColorWhite)
+						gfx.fillRoundRect(50, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 30, 20, 3)
+						gfx.setColor(gfx.kColorBlack)
+						gfx.setImageDrawMode(gfx.kDrawModeFillBlack)
+						assets.smallcaps:drawTextAligned(lower(area_response_json.results[i].country_code), 65, 126 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.center)
+						gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 					end
 					gfx.setColor(gfx.kColorXOR)
 					gfx.fillRect(40, 123 + vars.ui_timer.value, 320, 24)
@@ -323,9 +373,24 @@ function initialization:init(...)
 	end)
 
 	self:add()
+	pd.getCrankTicks(5)
+	newmusic('audio/music/initialization', true, 5000)
 end
 
 function initialization:update()
+	if vars.prompt == "whereareyou" then
+		local ticks = pd.getCrankTicks(5)
+		if ticks ~= 0 and vars.result > 0 then
+			if save.sfx then assets.crank:play() end
+			vars.result += ticks
+			if vars.result < 1 then
+				vars.result = 1
+			elseif vars.result > vars.results then
+				vars.result = vars.results
+			end
+			vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+		end
+	end
 	vars.crank_change += pd.getCrankChange()
 	if vars.get_area then
 		if net.getStatus() == net.kStatusNotAvailable then
@@ -333,19 +398,21 @@ function initialization:update()
 		else
 			if first_check and not save.setup then
 				self:openticker(text("contacting_wb"))
+				if save.sfx then assets.connect:play() end
 				first_check = false
 			else
 				self:openticker(text("contacting"))
+				if save.sfx then assets.connect:play() end
 			end
 			if save.setup then
 				save.setup = false
 			end
-			http:get("/v1/search?name=" .. save.area .. "&count=10&language=en&format=json")
+			http:get("/v1/search?name=" .. urlencode(save.area) .. "&count=10&language=en&format=json")
 			http:setRequestCompleteCallback(function()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
 				vars.area_response = http:read(bytes)
-				if string.find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
+				if find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
 					self:closeticker()
 					self:openui("noarea")
 					http:close()
@@ -353,19 +420,19 @@ function initialization:update()
 				else
 					local response_start = 0
 					local response_end = 0
-					for i = 1, string.len(vars.area_response) do
-						if string.byte(vars.area_response, i) == string.byte("{") then
+					for i = 1, len(vars.area_response) do
+						if byte(vars.area_response, i) == byte("{") then
 							response_start = i
 							break
 						end
 					end
-					for i = string.len(vars.area_response), 1, -1 do
-						if string.byte(vars.area_response, i) == string.byte("}") then
+					for i = len(vars.area_response), 1, -1 do
+						if byte(vars.area_response, i) == byte("}") then
 							response_end = i
 							break
 						end
 					end
-					vars.area_response_formatted = string.sub(vars.area_response, response_start, response_end)
+					vars.area_response_formatted = sub(vars.area_response, response_start, response_end)
 					area_response_json = json.decode(vars.area_response_formatted)
 					http:close()
 				end
@@ -394,6 +461,7 @@ function initialization:update()
 		else
 			if not vars.ticker_open then
 				self:openticker(text("contacting"))
+				if save.sfx then assets.connect:play() end
 			end
 			local speed = ""
 			local meas = ""
@@ -405,22 +473,23 @@ function initialization:update()
 				vars.weather_response = http:read(bytes)
 				local response_start = 0
 				local response_end = 0
-				for i = 1, string.len(vars.weather_response) do
-					if string.byte(vars.weather_response, i) == string.byte("{") then
+				for i = 1, len(vars.weather_response) do
+					if byte(vars.weather_response, i) == byte("{") then
 						response_start = i
 						break
 					end
 				end
-				for i = string.len(vars.weather_response), 1, -1 do
-					if string.byte(vars.weather_response, i) == string.byte("}") then
+				for i = len(vars.weather_response), 1, -1 do
+					if byte(vars.weather_response, i) == byte("}") then
 						response_end = i
 						break
 					end
 				end
-				vars.weather_response_formatted = string.sub(vars.weather_response, response_start, response_end)
+				vars.weather_response_formatted = sub(vars.weather_response, response_start, response_end)
 				weather_response_json = json.decode(vars.weather_response_formatted)
 				http:close()
 				self:closeticker()
+				fademusic(5000)
 				scenemanager:transitionscene(weather)
 			end)
 		end
@@ -489,11 +558,16 @@ function initialization:openui(prompt)
 			gfx.setColor(gfx.kColorWhite)
 			gfx.drawRoundRect(35, 90, 330, 90, 5)
 			gfx.setColor(gfx.kColorBlack)
-			assets.roobert11:drawTextAligned(text('selectwhere'), 200, 200, kTextAlignment.center)
+			assets.roobert11:drawTextAligned(text('select_crank'), 200, 200, kTextAlignment.center)
 		elseif prompt == "nointernet" then
 			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
 		end
 	gfx.popContext()
+	if prompt == "nointernet" or prompt == "noarea" then
+		if save.sfx then assets.error:play() end
+	else
+		if save.sfx then assets.sfx_ui:play() end
+	end
 	pd.inputHandlers.push(vars[prompt .. 'Handlers'])
 	if not vars.ui_open then
 		vars.ui_timer = pd.timer.new(250, vars.ui_timer.value, 0, pd.easingFunctions.outSine)

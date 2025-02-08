@@ -17,9 +17,9 @@ function credits:init(...)
 
 	assets = {
 		ashe = gfx.font.new('fonts/ashe'),
-		sasser = gfx.font.new('fonts/sasser'),
+		smallcaps = gfx.font.new('fonts/smallcaps'),
 		roobert11 = gfx.font.new('fonts/roobert11'),
-		roobert24 = gfx.font.new('fonts/roobert24')
+		back = smp.new('audio/sfx/back'),
 	}
 
 	vars = {
@@ -27,6 +27,7 @@ function credits:init(...)
 	}
 	vars.creditsHandlers = {
 		BButtonDown = function()
+			if save.sfx then assets.back:play() end
 			scenemanager:transitionscene(weather)
 		end,
 	}
@@ -34,6 +35,7 @@ function credits:init(...)
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		assets.ashe:drawTextAligned(text('credits'), 200, 10, kTextAlignment.center)
+		assets.smallcaps:drawText(pd.metadata.version, 10, 10)
 		gfx.drawLine(0, 45, 400, 45)
 		gfx.drawLine(0, 208, 400, 208)
 		gfx.setDitherPattern(0.75, gfx.image.kDitherTypeBayer2x2)

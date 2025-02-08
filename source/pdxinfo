@@ -3,5 +3,5 @@ author=rae
 description=Check your local weather, on your Playdate! It's weather, untethered.
 bundleID=wtf.rae.cloudburst
 version=0.5.0
-buildNumber=815
+buildNumber=1061
 imagePath=images/system

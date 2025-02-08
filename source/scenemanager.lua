@@ -1,5 +1,6 @@
 local pd <const> = playdate
 local gfx <const> = pd.graphics
+local floor <const> = math.floor
 
 class('scenemanager').extends()
 
@@ -43,9 +44,10 @@ function scenemanager:transitionsceneout(scene, ...)
 	local transitiontimer = self:transition(37, 1)
 	-- After the first timer ends...
 	transitiontimer.timerEndedCallback = function()
+		self.sprite_added = false
+		self.sprite:remove()
 		-- After this timer's over, remove the transition and the sprites.
 		self.transitioning = false
-		self.sprite:remove()
 	end
 end
 
@@ -75,9 +77,10 @@ function scenemanager:transitionscene(scene, ...)
 		-- the SECOND HALF of the transition period.
 		transitiontimer = self:transition(37, 1)
 		transitiontimer.timerEndedCallback = function()
+			self.sprite_added = false
+			self.sprite:remove()
 			-- After this timer's over, remove the transition and the sprites.
 			self.transitioning = false
-			self.sprite:remove()
 		end
 	end
 end
@@ -85,7 +88,8 @@ end
 function scenemanager:transition(table_start, table_end)
 	self.sprite = self:newsprite()
 	local newtimer = pd.timer.new(self.transitiontime, table_start, table_end)
-	newtimer.updateCallback = function(timer) self.sprite:setImage(self.transimage[math.floor(timer.value)]) end
+	newtimer.updateCallback = function(timer) self.sprite:setImage(self.transimage[floor(timer.value)]) end
+	self.sprite_added = true
 	return newtimer
 end
 
@@ -93,7 +97,7 @@ function scenemanager:newsprite()
 	local loading = gfx.sprite.new()
 	-- If there's already a sprite from the first half, set the start image to the last image of the table.
 	-- This prevents any unwanted jitter when passing the baton from the first half to the second.
-	if self.sprite then
+	if self.sprite_added then
 		loading:setImage(self.sprite:getImage())
 	else
 		if self.transitiontype == "transition" then

@@ -23,13 +23,16 @@ local net <const> = pd.network
 local smp <const> = pd.sound.sampleplayer
 local fle <const> = pd.sound.fileplayer
 local text <const> = gfx.getLocalizedText
+local abs <const> = math.abs
+local format <const> = string.format
+local byte <const> = string.byte
+local char <const> = string.char
 
 pd.display.setRefreshRate(30)
 gfx.setBackgroundColor(gfx.kColorWhite)
 gfx.setLineWidth(2)
 
 first_check = true
-overlay = gfx.image.new('images/overlay')
 
 -- Save check
 function savecheck()
@@ -42,11 +45,32 @@ function savecheck()
 	save.meas = save.meas or "mm"
 	save.refresh = save.refresh or "1hr"
 	save.autolock = save.autolock or 20
+	save.wallpaper = save.wallpaper or 1
+	save.invert = save.invert or 1
+	if save.sfx == nil then save.sfx = true end
+	if save.music == nil then save.music = true end
 	if save.setup == nil then save.setup = true end
 end
 
 -- ... now we run that!
 savecheck()
+
+time = pd.getTime()
+if save.wallpaper == 5 and pd.datastore.readImage('images/custom') == nil then
+	save.wallpaper = 1
+end
+lasthour = 0
+lastminute = 0
+
+if save.invert == 1 then
+	pd.display.setInverted(false)
+elseif save.invert == 2 then
+	pd.display.setInverted(true)
+elseif save.invert == 3 then
+	if time.hour >= 12 then
+		pd.display.setInverted(true)
+	end
+end
 
 -- When the game closes...
 function pd.gameWillTerminate()
@@ -79,9 +103,10 @@ function stopmusic()
 end
 
 -- New music track. This should be called in a scene's init, only if there's no track leading into it. File is a path to an audio file in the PDX. Loop, if true, will loop the audio file. Range will set the loop's starting range.
-function newmusic(file, loop, range)
+function newmusic(file, loop, delay)
 	if save.music and music == nil then -- If a music file isn't actively playing...then go ahead and set a new one.
 		music = fle.new(file)
+		music:setVolume(0)
 		if loop then -- If set to loop, then ... loop it!
 			music:setLoopRange(range or 0)
 			music:play(0)
@@ -91,6 +116,7 @@ function newmusic(file, loop, range)
 				music = nil
 			end)
 		end
+		music:setVolume(1, 1, delay/1000)
 	end
 end
 
@@ -98,23 +124,20 @@ end
 -- ref: http://stackoverflow.com/questions/20282054/how-to-urldecode-a-request-uri-string-in-lua
 -- to encode table as parameters, see https://github.com/stuartpb/tvtropes-lua/blob/master/urlencode.lua
 char_to_hex = function(c)
-  return string.format("%%%02X", string.byte(c))
+  return format("%%%02X", byte(c))
 end
-
 function urlencode(url)
   if url == nil then
 	return
   end
   url = url:gsub("\n", "\r\n")
-  url = url:gsub("([^%w ])", char_to_hex)
+  str = url:gsub("([^%w _%%%-%.~])", char_to_hex)
   url = url:gsub(" ", "+")
   return url
 end
-
 hex_to_char = function(x)
-  return string.char(tonumber(x, 16))
+  return char(tonumber(x, 16))
 end
-
 urldecode = function(url)
   if url == nil then
 	return
@@ -164,6 +187,14 @@ function pd.update()
 	-- Catch-all stuff ...
 	gfx.sprite.update()
 	pd.timer.updateTimers()
-	-- pd.drawFPS(10, 10)
-	overlay:draw(0, 0)
+	time = pd.getTime()
+	if save.invert == 3 then
+		if lasthour < 12 and time.hour >= 12 then
+			pd.display.setInverted(true)
+		elseif lasthour == 23 and time.hour == 0 then
+			pd.display.setInverted(false)
+		end
+	end
+	lasthour = time.hour
+	lastminute = time.minute
 end
