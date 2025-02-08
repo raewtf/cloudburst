@@ -1,3 +1,5 @@
+import 'Tanuk_CodeSequence'
+
 -- Setting up consts
 local pd <const> = playdate
 local net <const> = pd.network
@@ -374,7 +376,23 @@ function initialization:init(...)
 
 	self:add()
 	pd.getCrankTicks(5)
-	newmusic('audio/music/initialization', true, 5000)
+	if save.retro then
+		newmusic('audio/music/chippy', true, 5000)
+	else
+		newmusic('audio/music/initialization', true, 5000)
+	end
+
+	if not save.found_retro then
+		local sprCode = Tanuk_CodeSequence({pd.kButtonRight, pd.kButtonUp, pd.kButtonB, pd.kButtonDown, pd.kButtonUp, pd.kButtonB, pd.kButtonDown, pd.kButtonUp, pd.kButtonB}, function()
+			if save.sfx then
+				assets.select:play()
+			end
+			save.found_retro = true
+			save.retro = true
+			stopmusic()
+			newmusic('audio/music/chippy', true, 0)
+		end)
+	end
 end
 
 function initialization:update()

@@ -144,6 +144,8 @@ function options:init(...)
 					end
 				end
 				if save.sfx then assets.move:play() end
+			elseif vars.selections[vars.selection] == 'retro' then
+				save.retro = not save.retro
 			end
 		end,
 
@@ -221,6 +223,8 @@ function options:init(...)
 					end
 				end
 				if save.sfx then assets.move:play() end
+			elseif vars.selections[vars.selection] == 'retro' then
+				save.retro = not save.retro
 			end
 		end,
 
@@ -239,6 +243,9 @@ function options:init(...)
 	pd.inputHandlers.push(vars.optionsHandlers)
 
 	vars.selection_timer.discardOnCompletion = false
+	if save.found_retro then
+		table.insert(vars.selections, 'retro')
+	end
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		gfx.setDitherPattern(0.75, gfx.image.kDitherTypeBayer2x2)
@@ -255,6 +262,7 @@ function options:init(...)
 		assets.roobert11:drawTextAligned(text('options_sfx'), 190, 334 - (30 * vars.selection_timer.value), kTextAlignment.right)
 		assets.roobert11:drawTextAligned(text('options_wallpaper'), 190, 364 - (30 * vars.selection_timer.value), kTextAlignment.right)
 		assets.roobert11:drawTextAligned(text('options_invert'), 190, 394 - (30 * vars.selection_timer.value), kTextAlignment.right)
+		if save.found_retro then assets.roobert11:drawTextAligned(text('options_retro'), 190, 424 - (30 * vars.selection_timer.value), kTextAlignment.right) end
 		gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
 		gfx.fillRoundRect(210, 154 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 184 - (30 * vars.selection_timer.value), 125, 20, 5)
@@ -265,6 +273,7 @@ function options:init(...)
 		gfx.fillRoundRect(210, 334 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 364 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 394 - (30 * vars.selection_timer.value), 125, 20, 5)
+		if save.found_retro then gfx.fillRoundRect(210, 424 - (30 * vars.selection_timer.value), 125, 20, 5) end
 		gfx.setColor(gfx.kColorBlack)
 		gfx.drawRoundRect(210, 154 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 184 - (30 * vars.selection_timer.value), 125, 20, 5)
@@ -275,6 +284,7 @@ function options:init(...)
 		gfx.drawRoundRect(210, 334 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 364 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 394 - (30 * vars.selection_timer.value), 125, 20, 5)
+		if save.found_retro then gfx.drawRoundRect(210, 424 - (30 * vars.selection_timer.value), 125, 20, 5) end
 		gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 		gfx.drawTextInRect(lower(save.area), 272 - 60, 156 - (30 * vars.selection_timer.value), 120, 30, 0, '...', kTextAlignment.center)
 		assets.smallcaps:drawTextAligned(text('options_' .. save.temp), 272, 186 - (30 * vars.selection_timer.value), kTextAlignment.center)
@@ -285,6 +295,7 @@ function options:init(...)
 		assets.smallcaps:drawTextAligned(text('options_' .. tostring(save.sfx)), 272, 336 - (30 * vars.selection_timer.value), kTextAlignment.center)
 		assets.smallcaps:drawTextAligned(text('options_wallpaper' .. save.wallpaper), 272, 366 - (30 * vars.selection_timer.value), kTextAlignment.center)
 		assets.smallcaps:drawTextAligned(text('options_invert' .. save.invert), 272, 396 - (30 * vars.selection_timer.value), kTextAlignment.center)
+		if save.found_retro then assets.smallcaps:drawTextAligned(text('options_' .. tostring(save.retro)), 272, 426 - (30 * vars.selection_timer.value), kTextAlignment.center) end
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		gfx.setColor(gfx.kColorWhite)
 		gfx.fillRect(0, 0, 400, 45)

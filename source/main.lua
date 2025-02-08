@@ -47,6 +47,8 @@ function savecheck()
 	save.autolock = save.autolock or 20
 	save.wallpaper = save.wallpaper or 1
 	save.invert = save.invert or 1
+	if save.found_retro == nil then save.found_retro = false end
+	if save.retro == nil then save.retro = false end
 	if save.sfx == nil then save.sfx = true end
 	if save.music == nil then save.music = true end
 	if save.setup == nil then save.setup = true end

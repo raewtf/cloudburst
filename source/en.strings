@@ -78,8 +78,10 @@ symbols = "🌐︎ⒶⒷⒹ⊙ ⒼⒽⒾⒿ ⓀⓁ Ⓜ ⒸⒻ"
 "options_invert2" = "yes"
 "options_invert3" = "on noons"
 
+"options_retro" = "Retro boot song"
+
 "credits" = "Credits"
-"credits_full" = "Art, code, and music made by Rae\nSound effects provided by Pixabay\nWeather provided by the open-meteo API\nEarth made using Pixel Planet Generator\nThanks to Andy, Toad, Vachi, Jackson,\nscratch, and those who waited patiently."
+"credits_full" = "Art, code, and music made by Rae\nAddtl. music by scratch, SFX from Pixabay\nWeather data provided by open-meteo\nEarth made using Pixel Planet Generator\nThanks to Andy, Toad, Vachi, Jackson,\nscratch, and those who waited patiently."
 
 "contacting" = "contacting the server, please wait..."
 "contacting_wb" = "welcome back! contacting the server, please wait..."
