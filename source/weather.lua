@@ -498,7 +498,7 @@ function weather:drawprecipitation(y, left)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('precipitation'), (left and 20 or 210) + 5, y + 5)
-	assets.roobert24:drawTextAligned((save.meas == 'mm' and (weather_response_json.current.precipitation / 25.4) or weather_response_json.current.precipitation) .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 18, kTextAlignment.right)
+	assets.roobert24:drawTextAligned((save.meas == 'inch' and (weather_response_json.current.precipitation / 25.4) or weather_response_json.current.precipitation) .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 18, kTextAlignment.right)
 	assets.smallcaps:drawTextAligned(text('nexthour') .. weather_response_json.hourly.precipitation[vars.hourly_start + 1] .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 48, kTextAlignment.right)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
