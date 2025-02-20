@@ -33,13 +33,13 @@ gfx.setBackgroundColor(gfx.kColorWhite)
 gfx.setLineWidth(2)
 
 first_check = true
+key = '314ada2cfd7a4afda5e12603250702'
 
 -- Save check
 function savecheck()
 	save = pd.datastore.read()
 	if save == nil then save = {} end
 	save.area = save.area or ""
-	save.area_result = save.area_result or 0
 	save.temp = save.temp or "celsius"
 	save.speed = save.speed or "kph"
 	save.meas = save.meas or "mm"
@@ -177,13 +177,8 @@ scenemanager:transitionsceneout(initialization)
 
 function pd.update()
 	if not vars.http_opened and vars.iwarnedyouabouthttpbroitoldyoudog then
-		if vars.get_area then
-			http = net.http.new("geocoding-api.open-meteo.com", 443, true, "using your local area to access location info.")
-		else
-			http = net.http.new("api.open-meteo.com", 443, true, "using your location info to retrieve local weather.")
-			vars.get_weather = true
-		end
-		assert(http, 'Hi! Sorry about the crash, but it was the best way to reach you. Please allow access to the network connection gates to use this app! If you\'ve accidentally selected \'Never\', clear out the app\'s data from your Data Disk to continue - it\'s in the "wtf.rae.cloudburst" folder.')
+		http = net.http.new("api.weatherapi.com", 443, true, "using your local area to access location info.")
+		assert(http, 'Hi, please allow access to the network connection gates to use this app! Head to Settings > Permissions > Cloudburst, and set the Network permissions to "allow".')
 		vars.http_opened = true
 	end
 	-- Catch-all stuff ...

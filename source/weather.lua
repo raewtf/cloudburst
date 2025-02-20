@@ -56,38 +56,35 @@ function weather:init(...)
 		foldclose = smp.new('audio/sfx/foldclose'),
 		foldclosesoft = smp.new('audio/sfx/foldclosesoft'),
 		foldtwang = smp.new('audio/sfx/foldtwang'),
+		wind = gfx.image.new('images/wind'),
+		compass = gfx.image.new('images/compass'),
 		crank = smp.new('audio/sfx/crank'),
 	}
 
+	gfx.setFont(assets.smallcaps)
+
 	vars = {
-		localtime = pd.GMTTimeFromEpoch(sec + weather_response_json.utc_offset_seconds, ms),
-		sunrise = pd.GMTTimeFromEpoch(weather_response_json.daily.sunrise[1] - 946684800 + weather_response_json.utc_offset_seconds, 0),
-		sunset = pd.GMTTimeFromEpoch(weather_response_json.daily.sunset[1] - 946684800 + weather_response_json.utc_offset_seconds, 0),
-		sunrise2 = pd.GMTTimeFromEpoch(weather_response_json.daily.sunrise[2] - 946684800 + weather_response_json.utc_offset_seconds, 0),
-		sunset2 = pd.GMTTimeFromEpoch(weather_response_json.daily.sunset[2] - 946684800 + weather_response_json.utc_offset_seconds, 0),
+		localtime = pd.timeFromEpoch(response_json.location.localtime_epoch - 946684800, ms),
+		lastchecked = pd.getTime(),
 		polygon = pd.geometry.polygon.new(0, 30, 340, 30, 360, 1, 400, 1, 400, 1000, 0, 1000, 0, 30),
 		polygon2 = pd.geometry.polygon.new(0, 3, 358, 3, 340, 30, 0, 30, 0, 3),
 		hourly_start = 1,
-		get_area = false,
-		get_weather = false,
+		get_data = false,
 		http_opened = false,
 		iwarnedyouabouthttpbroitoldyoudog = false,
-		area_response = nil,
-		area_response_formatted = nil,
-		weather_response = nil,
-		weather_response_formatted = nil,
+		data_response = nil,
+		data_response_formatted = nil,
 		lo_power = false,
 		chargebool = pd.getPowerStatus().charging,
 	}
 
-	for i = 1, #weather_response_json.hourly.time do
-		local time = pd.GMTTimeFromEpoch(weather_response_json.hourly.time[i] - 946684800 + weather_response_json.utc_offset_seconds, ms)
-		if vars.localtime.hour == time.hour then
-			vars.hourly_start = i
-			break
-		end
-	end
+	vars.hourly_start = vars.localtime.hour
+	vars.sunrise = response_json.forecast.forecastday[1].astro.sunrise
+	vars.sunset = response_json.forecast.forecastday[1].astro.sunset
+	vars.sunrise2 = response_json.forecast.forecastday[2].astro.sunrise
+	vars.sunset2 = response_json.forecast.forecastday[2].astro.sunset
 
+	self:calcsuntimes()
 	vars.locallastminute = vars.localtime.minute
 
 	if save.refresh == "15m" then
@@ -142,8 +139,8 @@ function weather:init(...)
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		if save.wallpaper == 1 then
-			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°', 18, 175)
-			assets.roobert11:drawText(text('wc_' .. weather_response_json.current.weather_code), 18, 205)
+			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
+			assets.roobert11:drawText(response_json.current.condition.text, 18, 205) -- todo: convert this to my own thing l8r
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
 			assets.default1:draw((vars.default1_timer.value // 2) * 2, 0)
@@ -154,25 +151,25 @@ function weather:init(...)
 			assets.stars_l:draw(((vars.stars_l.value + (vars.crank_change / 1.2)) % 400) - 400, 0)
 			assets.earth[floor((vars.earth_timer.value + (vars.crank_change / 1.8)) % 299) + 1]:draw(100, 140)
 			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°', 18, 18)
-			assets.roobert11:drawText(text('wc_' .. weather_response_json.current.weather_code), 18, 48)
+			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18)
+			assets.roobert11:drawText(response_json.current.condition.text, 18, 48)
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 18, 2)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		elseif save.wallpaper == 3 then
-			assets.miko:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°', 215, 65, kTextAlignment.center)
-			assets.roobert11:drawText(text('wc_' .. weather_response_json.current.weather_code), 18, 205)
+			assets.miko:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 215, 65, kTextAlignment.center)
+			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
 		elseif save.wallpaper == 4 then
 			assets.miko:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute)), 200, 65, kTextAlignment.center)
-			assets.roobert11:drawText(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°, ' .. text('wc_' .. weather_response_json.current.weather_code), 18, 205)
+			assets.roobert11:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°, ' .. response_json.current.condition.text, 18, 205)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
 		elseif save.wallpaper == 5 then
 			assets.customimage:draw(0, 0)
 			gfx.setImageDrawMode(gfx.kDrawModeNXOR)
-			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°', 18, 175)
-			assets.roobert11:drawText(text('wc_' .. weather_response_json.current.weather_code), 18, 205)
+			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
+			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -204,10 +201,10 @@ function weather:init(...)
 			else
 				self.crank = 0
 			end
-			if self.y <= -210 then
-				self:moveTo(self.x, self.y += (-210 - self.y) * 0.3)
-				if self.y < -210.1 and self.y > -209.9 then
-					self:moveTo(self.x, -210)
+			if self.y <= -230 then
+				self:moveTo(self.x, self.y += (-230 - self.y) * 0.3)
+				if self.y < -230.1 and self.y > -229.9 then
+					self:moveTo(self.x, -230)
 				end
 			end
 			if pd.getCrankChange() > 0 then
@@ -269,8 +266,8 @@ function weather:init(...)
 	end
 
 	sprites.fold = classes.fold()
-	self:add()
 	self:buildthefold()
+	self:add()
 	pd.timer.performAfterDelay(300, function()
 		if not pd.getPowerStatus().charging and not scenemanager.transitioning then
 			pd.display.setRefreshRate(5)
@@ -280,7 +277,7 @@ function weather:init(...)
 end
 
 function weather:update()
-	if save.wallpaper == 1 or save.wallpaper == 2 and sprites.fold.y > 10 then
+	if save.wallpaper == 1 or save.wallpaper == 2 and (sprites.fold == nil or sprites.fold.y > 10) then
 		gfx.sprite.redrawBackground()
 	end
 	if pd.getPowerStatus().charging ~= vars.chargebool then
@@ -301,11 +298,6 @@ function weather:update()
 		end
 	end
 	sec, ms = pd.getSecondsSinceEpoch()
-	vars.localtime = pd.GMTTimeFromEpoch(sec + weather_response_json.utc_offset_seconds, ms)
-	if vars.locallastminute ~= vars.localtime.minute then
-		self:buildthefold()
-		pd.display.flush()
-	end
 	vars.locallastminute = vars.localtime.minute
 	if lastminute ~= time.minute then
 		if pd.getBatteryPercentage() < save.autolock then
@@ -315,90 +307,86 @@ function weather:update()
 		end
 		pd.display.flush()
 	end
-	if vars.get_area then
+	if vars.get_data then
 		if net.getStatus() == net.kStatusNotAvailable then
 			scenemanager:transitionscene(initialization, "nointernet")
 		else
-			http:get("/v1/search?name=" .. urlencode(save.area) .. "&count=10&language=en&format=json")
+			http:get("/v1/forecast.json?key=" .. key .. "&q=" .. urlencode(save.area) .. "&days=2&aqi=yes")
 			http:setRequestCompleteCallback(function()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
-				vars.area_response = http:read(bytes)
-				if find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
+				vars.data_response = http:read(bytes)
+				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
 					self:closeticker()
 					self:openui("noarea")
 					http:close()
 					return
 				else
-					local response_start = 0
-					local response_end = 0
-					for i = 1, len(vars.area_response) do
-						if byte(vars.area_response, i) == byte("{") then
-							response_start = i
-							break
+					-- chunk data here
+					vars.data_response_formatted = ""
+					local index = 1
+					for line in string.gmatch(vars.data_response, "[^\r?\n]+") do
+						 if index % 2 == 1 then
+							  vars.data_response_formatted = vars.data_response_formatted .. line
 						end
+						index += 1
 					end
-					for i = len(vars.area_response), 1, -1 do
-						if byte(vars.area_response, i) == byte("}") then
+					local response_end = 0
+					for i = len(vars.data_response_formatted), 1, -1 do
+						if byte(vars.data_response_formatted, i) == byte("}") then
 							response_end = i
 							break
 						end
 					end
-					vars.area_response_formatted = sub(vars.area_response, response_start, response_end)
-					area_response_json = json.decode(vars.area_response_formatted)
+					string.gsub(vars.data_response, "[^\r?\n]+", "")
+					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
+					response_json = json.decode(vars.data_response_formatted)
 					http:close()
-				end
-				if area_response_json.results == nil then
-					self:transitionscene(initialization, "noarea")
-				else
-					vars.results = #area_response_json.results
-					if vars.results > 1 and save.area_result == 0 then
-						self:closeticker()
-						vars.result = 1
-						self:transitionscene(initialization, "whereareyou")
-					else
-						save.area_result = 1
-						vars.http_opened = false
-						vars.get_weather = true
+					self:calcsuntimes()
+					vars.hourly_start = vars.localtime.hour
+					if sprites.fold ~= nil then
+						self:buildthefold()
 					end
+					vars.lastchecked = pd.getTime()
+					pd.display.flush()
 				end
 			end)
 		end
-		vars.get_area = false
+		vars.get_data = false
 	end
-	if vars.get_weather then
-		if net.getStatus() == net.kStatusNotAvailable then
-			self:transitionscene(initialization, "nointernet")
-		else
-			http:get("https://api.open-meteo.com/v1/forecast?latitude=".. area_response_json.results[save.area_result].latitude .."&longitude=" .. area_response_json.results[save.area_result].longitude .. "&current=relative_humidity_2m,temperature_2m,weather_code,apparent_temperature,precipitation,is_day&hourly=temperature_2m,weather_code,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code&timezone="  .. area_response_json.results[save.area_result].timezone .. "&forecast_days=2&timeformat=unixtime")
-			http:setRequestCompleteCallback(function()
-				http:setConnectTimeout(10)
-				local bytes = http:getBytesAvailable()
-				vars.weather_response = http:read(bytes)
-				local response_start = 0
-				local response_end = 0
-				for i = 1, len(vars.weather_response) do
-					if byte(vars.weather_response, i) == byte("{") then
-						response_start = i
-						break
-					end
-				end
-				for i = len(vars.weather_response), 1, -1 do
-					if byte(vars.weather_response, i) == byte("}") then
-						response_end = i
-						break
-					end
-				end
-				vars.weather_response_formatted = sub(vars.weather_response, response_start, response_end)
-				weather_response_json = json.decode(vars.weather_response_formatted)
-				http:close()
-				if sprites.fold ~= nil then
-					self:buildthefold()
-				end
-				pd.display.flush()
-			end)
-		end
-		vars.get_weather = false
+end
+
+function weather:calcsuntimes()
+	if pd.shouldDisplay24HourTime() then
+		if find(vars.sunrise, "PM") then vars.sunrise = vars.sunrise:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunrise,1,2)) + 12) % 24), 1) end
+		if find(vars.sunset, "PM") then vars.sunset = vars.sunset:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunset,1,2)) + 12) % 24), 1) end
+		if find(vars.sunrise2, "PM") then vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunrise2,1,2)) + 12) % 24), 1) end
+		if find(vars.sunset2, "PM") then vars.sunset2 = vars.sunset2:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunset2,1,2)) + 12) % 24), 1) end
+
+		vars.sunrise = vars.sunrise:gsub(" AM", "")
+		vars.sunset = vars.sunset:gsub(" AM", "")
+		vars.sunrise2 = vars.sunrise2:gsub(" AM", "")
+		vars.sunset2 = vars.sunset2:gsub(" AM", "")
+
+		vars.sunrise = vars.sunrise:gsub(" PM", "")
+		vars.sunset = vars.sunset:gsub(" PM", "")
+		vars.sunrise2 = vars.sunrise2:gsub(" PM", "")
+		vars.sunset2 = vars.sunset2:gsub(" PM", "")
+	else
+		vars.sunrise = vars.sunrise:gsub("[0-9]+", tonumber(string.sub(vars.sunrise,1,2)), 1)
+		vars.sunset = vars.sunset:gsub("[0-9]+", tonumber(string.sub(vars.sunset,1,2)), 1)
+		vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", tonumber(string.sub(vars.sunrise2,1,2)), 1)
+		vars.sunset2 = vars.sunset2:gsub("[0-9]+", tonumber(string.sub(vars.sunset2,1,2)), 1)
+
+		vars.sunrise = vars.sunrise:gsub(" AM", "a")
+		vars.sunset = vars.sunset:gsub(" AM", "a")
+		vars.sunrise2 = vars.sunrise2:gsub(" AM", "a")
+		vars.sunset2 = vars.sunset2:gsub(" AM", "a")
+
+		vars.sunrise = vars.sunrise:gsub(" PM", "p")
+		vars.sunset = vars.sunset:gsub(" PM", "p")
+		vars.sunrise2 = vars.sunrise2:gsub(" PM", "p")
+		vars.sunset2 = vars.sunset2:gsub(" PM", "p")
 	end
 end
 
@@ -414,30 +402,34 @@ function weather:drawhourlyforecast(y)
 	assets.smallcaps:drawTextAligned(text('4h'), 230, y + 5, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('5h'), 290, y + 5, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('6h'), 350, y + 5, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+1] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+0]) .. '°', 50, y + 45, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+2] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+1]) .. '°', 110, y + 45, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+3] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+2]) .. '°', 170, y + 45, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+4] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+3]) .. '°', 230, y + 45, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+5] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+4]) .. '°', 290, y + 45, kTextAlignment.center)
-	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.hourly.temperature_2m[vars.hourly_start+6] * 9/5) + 32 or weather_response_json.hourly.temperature_2m[vars.hourly_start+5]) .. '°', 350, y + 45, kTextAlignment.center)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+1], 33, y + 23)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+2], 93, y + 23)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+3], 153, y + 23)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+4], 213, y + 23)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+5], 273, y + 23)
-	weather:drawfore(weather_response_json.hourly.weather_code[vars.hourly_start+6], 333, y + 23)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].temp_c) .. '°', 50, y + 45, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 22 and 1 or 2].hour[(vars.hourly_start+2)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 22 and 1 or 2].hour[(vars.hourly_start+2)%24 + 1].temp_c) .. '°', 110, y + 45, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 21 and 1 or 2].hour[(vars.hourly_start+3)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 21 and 1 or 2].hour[(vars.hourly_start+3)%24 + 1].temp_c) .. '°', 170, y + 45, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 20 and 1 or 2].hour[(vars.hourly_start+4)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 20 and 1 or 2].hour[(vars.hourly_start+4)%24 + 1].temp_c) .. '°', 230, y + 45, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 19 and 1 or 2].hour[(vars.hourly_start+5)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 19 and 1 or 2].hour[(vars.hourly_start+5)%24 + 1].temp_c) .. '°', 290, y + 45, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[vars.hourly_start < 18 and 1 or 2].hour[(vars.hourly_start+6)%24 + 1].temp_c * 9/5) + 32 or response_json.forecast.forecastday[vars.hourly_start < 18 and 1 or 2].hour[(vars.hourly_start+6)%24 + 1].temp_c) .. '°', 350, y + 45, kTextAlignment.center)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].condition.code, 33, y + 23)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 22 and 1 or 2].hour[(vars.hourly_start+2)%24 + 1].condition.code, 93, y + 23)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 21 and 1 or 2].hour[(vars.hourly_start+3)%24 + 1].condition.code, 153, y + 23)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 20 and 1 or 2].hour[(vars.hourly_start+4)%24 + 1].condition.code, 213, y + 23)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 19 and 1 or 2].hour[(vars.hourly_start+5)%24 + 1].condition.code, 273, y + 23)
+	weather:drawfore(response_json.forecast.forecastday[vars.hourly_start < 18 and 1 or 2].hour[(vars.hourly_start+6)%24 + 1].condition.code, 333, y + 23)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
-function weather:drawlocaltime(y, left)
+function weather:drawwind(y, left)
 	gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
 	gfx.fillRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setColor(gfx.kColorBlack)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-	assets.smallcaps:drawText(text('localtime'), (left and 20 or 210) + 5, y + 5)
-	assets.roobert24:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",vars.localtime.hour) .. ':' .. format("%02d",vars.localtime.minute)) or (((vars.localtime.hour % 12) == 0 and '12' or vars.localtime.hour % 12) .. ':' .. format("%02d",vars.localtime.minute) .. (vars.localtime.hour >= 12 and 'p' or 'a')), (left and 183 or 373), y + 35, kTextAlignment.right)
+	assets.smallcaps:drawText(text('wind'), (left and 20 or 210) + 5, y + 5)
+	assets.roobert24:drawText((save.speed == 'mph' and format("%.1f", response_json.current.wind_kph / 1.609) or response_json.current.wind_kph), (left and 20 or 210) + 5, y + 20)
+	assets.roobert11:drawText((save.speed == 'mph' and 'm/h' or 'k/h'), (left and 20 or 210) + 8 + assets.roobert24:getTextWidth((save.speed == 'mph' and format("%.1f", response_json.current.wind_kph / 1.609) or response_json.current.wind_kph)), y + 30)
+	assets.smallcaps:drawText(text('gusts') .. (save.speed == 'mph' and format("%.1f", response_json.current.gust_kph / 1.609) or response_json.current.gust_kph) .. (save.speed == 'mph' and 'm/h' or 'k/h'), (left and 20 or 210) + 5, y + 48)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
+	assets.compass:draw((left and 125 or 315), y + 5)
+	assets.wind:drawRotated((left and 155 or 345), y + 35, response_json.current.wind_degree - 180)
 end
 
 function weather:drawnow(y, left)
@@ -447,8 +439,8 @@ function weather:drawnow(y, left)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('now'), (left and 20 or 210) + 5, y + 5)
-	weather:drawfore(weather_response_json.current.weather_code, (left and 55 or 245), y + 32)
-	assets.roobert24:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.current.temperature_2m * 9/5) + 32 or weather_response_json.current.temperature_2m) .. '°', (left and 183 or 373), y + 35, kTextAlignment.right)
+	weather:drawfore(response_json.current.condition.code, (left and 55 or 245), y + 32)
+	assets.roobert24:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', (left and 183 or 373), y + 35, kTextAlignment.right)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
@@ -460,8 +452,10 @@ function weather:drawsuntimes(y, left)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.fore[1]:draw((left and 20 or 210) + 30, y + 7)
 	assets.fore[2]:draw((left and 20 or 210) + 110, y + 7)
-	assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",vars.sunrise.hour) .. ':' .. format("%02d",vars.sunrise.minute)) or (((vars.sunrise.hour % 12) == 0 and '12' or vars.sunrise.hour % 12) .. ':' .. format("%02d",vars.sunrise.minute) .. (vars.sunrise.hour >= 12 and 'p' or 'a')), (left and 20 or 210) + 46, y + 30, kTextAlignment.center)
-	assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",vars.sunset.hour) .. ':' .. format("%02d",vars.sunset.minute)) or (((vars.sunset.hour % 12) == 0 and '12' or vars.sunset.hour % 12) .. ':' .. format("%02d",vars.sunset.minute) .. (vars.sunset.hour >= 12 and 'p' or 'a')), (left and 20 or 210) + 126, y + 30, kTextAlignment.center)
+	-- TODO: format " AM" and " PM" to "a" and "p"
+	-- TODO: account for 24-hour time
+	assets.roobert11:drawTextAligned(vars.sunrise, (left and 20 or 210) + 46, y + 30, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(vars.sunset, (left and 20 or 210) + 126, y + 30, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunrise'), (left and 20 or 210) + 46, y + 48, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunset'), (left and 20 or 210) + 126, y + 48, kTextAlignment.center)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -474,8 +468,8 @@ function weather:drawfeelslike(y, left)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('feelslike'), (left and 20 or 210) + 5, y + 5)
-	assets.roobert24:drawTextAligned(floor(save.temp == 'fahrenheit' and (weather_response_json.current.apparent_temperature * 9/5) + 32 or weather_response_json.current.apparent_temperature) .. '°', (left and 183 or 373), y + 18, kTextAlignment.right)
-	assets.smallcaps:drawTextAligned(text('hi') .. floor(save.temp == 'fahrenheit' and (weather_response_json.daily.temperature_2m_max[1] * 9/5) + 32 or weather_response_json.daily.temperature_2m_max[1]) .. '° ' .. text('lo') .. floor(save.temp == 'fahrenheit' and (weather_response_json.daily.temperature_2m_min[1] * 9/5) + 32 or weather_response_json.daily.temperature_2m_min[1]) .. '°', (left and 183 or 373), y + 48, kTextAlignment.right)
+	assets.roobert24:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.feelslike_c * 9/5) + 32 or response_json.current.feelslike_c) .. '°', (left and 183 or 373), y + 20, kTextAlignment.right)
+	assets.smallcaps:drawTextAligned(text('hi') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[1].day.maxtemp_c * 9/5) + 32 or response_json.forecast.forecastday[1].day.maxtemp_c) .. '° ' .. text('lo') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[1].day.mintemp_c * 9/5) + 32 or response_json.forecast.forecastday[1].day.mintemp_c) .. '°', (left and 183 or 373), y + 48, kTextAlignment.right)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
@@ -486,8 +480,8 @@ function weather:drawhumidity(y, left)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('humidity'), (left and 20 or 210) + 5, y + 5)
-	assets.roobert24:drawTextAligned(weather_response_json.current.relative_humidity_2m .. '%', (left and 183 or 373), y + 18, kTextAlignment.right)
-	assets.smallcaps:drawTextAligned(text('nexthour') .. weather_response_json.hourly.relative_humidity_2m[vars.hourly_start + 1] .. '%', (left and 183 or 373), y + 48, kTextAlignment.right)
+	assets.roobert24:drawTextAligned(response_json.current.humidity .. '%', (left and 183 or 373), y + 20, kTextAlignment.right)
+	assets.smallcaps:drawTextAligned(text('nexthour') .. response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].humidity .. '%', (left and 183 or 373), y + 48, kTextAlignment.right)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
@@ -498,8 +492,8 @@ function weather:drawprecipitation(y, left)
 	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('precipitation'), (left and 20 or 210) + 5, y + 5)
-	assets.roobert24:drawTextAligned((save.meas == 'inch' and (weather_response_json.current.precipitation / 25.4) or weather_response_json.current.precipitation) .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 18, kTextAlignment.right)
-	assets.smallcaps:drawTextAligned(text('nexthour') .. weather_response_json.hourly.precipitation[vars.hourly_start + 1] .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 48, kTextAlignment.right)
+	assets.roobert24:drawTextAligned((save.meas == 'inch' and format("%.1f", response_json.current.precip_mm / 25.4) or response_json.current.precip_mm) .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 20, kTextAlignment.right)
+	assets.smallcaps:drawTextAligned(text('nexthour') .. (save.meas == 'inch' and format("%.1f", response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].precip_mm / 25.4) or response_json.forecast.forecastday[vars.hourly_start < 23 and 1 or 2].hour[(vars.hourly_start+1)%24 + 1].precip_mm) .. (save.meas == 'mm' and 'mm' or '"'), (left and 183 or 373), y + 48, kTextAlignment.right)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
@@ -510,41 +504,41 @@ function weather:drawtomorrow(y)
 	gfx.drawRoundRect(20, y, 360, 70, 5)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.smallcaps:drawText(text('tomorrow'), 25, y + 5)
-	weather:drawfore(weather_response_json.daily.weather_code[2], 40, y + 28)
-	assets.roobert11:drawText(text('hi2') .. floor(save.temp == 'fahrenheit' and (weather_response_json.daily.temperature_2m_max[2] * 9/5) + 32 or weather_response_json.daily.temperature_2m_max[2]) .. '° ' .. text('lo2') .. floor(save.temp == 'fahrenheit' and (weather_response_json.daily.temperature_2m_min[2] * 9/5) + 32 or weather_response_json.daily.temperature_2m_min[2]) .. '°', 90, y + 28)
+	weather:drawfore(response_json.forecast.forecastday[2].day.condition.code, 40, y + 28)
+	assets.roobert11:drawText(text('hi2') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[2].day.maxtemp_c * 9/5) + 32 or response_json.forecast.forecastday[2].day.maxtemp_c) .. '° ' .. text('lo2') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[2].day.mintemp_c * 9/5) + 32 or response_json.forecast.forecastday[2].day.mintemp_c) .. '°', 90, y + 28)
 	assets.fore[1]:draw(240, y + 7)
 	assets.fore[2]:draw(320, y + 7)
-	assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",vars.sunrise2.hour) .. ':' .. format("%02d",vars.sunrise2.minute)) or (((vars.sunrise2.hour % 12) == 0 and '12' or vars.sunrise2.hour % 12) .. ':' .. format("%02d",vars.sunrise2.minute) .. (vars.sunrise2.hour >= 12 and 'p' or 'a')), 256, y + 30, kTextAlignment.center)
-	assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",vars.sunset2.hour) .. ':' .. format("%02d",vars.sunset2.minute)) or (((vars.sunset2.hour % 12) == 0 and '12' or vars.sunset2.hour % 12) .. ':' .. format("%02d",vars.sunset2.minute) .. (vars.sunset2.hour >= 12 and 'p' or 'a')), 336, y + 30, kTextAlignment.center)
+	-- TODO: format " AM" and " PM" to "a" and "p"
+	-- TODO: account for 24-hour time
+	assets.roobert11:drawTextAligned(vars.sunrise2, 256, y + 30, kTextAlignment.center)
+	assets.roobert11:drawTextAligned(vars.sunset2, 335, y + 30, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunrise'), 256, y + 48, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunset'), 336, y + 48, kTextAlignment.center)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
 function weather:drawfore(code, x, y)
-	if code == 0 then
-		if (vars.localtime.hour > vars.sunrise.hour and vars.localtime.hour < vars.sunset.hour) then
+	if code == 1000 then -- Clear
+		if response_json.current.is_day == 1 then
 			assets.fore[1]:draw(x, y)
 		else
 			assets.fore[2]:draw(x, y)
 		end
-	elseif code == 1 or code == 2 then
-		if (vars.localtime.hour > vars.sunrise.hour and vars.localtime.hour < vars.sunset.hour) then
+	elseif code == 1003 then -- Partly cloudy
+		if response_json.current.is_day == 1 then
 			assets.fore[4]:draw(x, y)
 		else
 			assets.fore[5]:draw(x, y)
 		end
-	elseif code == 3 then
+	elseif code == 1006 or code == 1009 or code == 1135 or code == 1147 then -- Cloudy
 		assets.fore[3]:draw(x, y)
-	elseif code == 45 or code == 48 then
-		assets.fore[9]:draw(x, y)
-	elseif code == 51 or code == 53 or code == 55 or code == 56 or code == 57 or code == 61 or code == 63 or code == 65 or code == 66 or code == 67 or code == 80 or code == 81 or code == 82 then
+	elseif code == 1030 or code == 1063 or code == 1072 or code == 1150 or code == 1153 or code == 1168 or code == 1171 or code == 1180 or code == 1193 or code == 1186 or code == 1189 or code == 1192 or code == 1195 or code == 1198 or code == 1201 or code == 1240 or code == 1243 or code == 1246 then -- Rainy
 		assets.fore[6]:draw(x, y)
-	elseif code == 71 or code == 73 or code == 75 or code == 77 or code == 85 or code == 86 then
+	elseif code == 1066 or code == 1069 or code == 1114 or code == 1117 or code == 1204 or code == 1207 or code == 1210 or code == 1213 or code == 1216 or code == 1219 or code == 1222 or code == 1225 or code == 1249 or code == 1252 or code == 1255 or code == 1258 then -- Snowy
 		assets.fore[8]:draw(x, y)
-	elseif code == 95 then
+	elseif code == 1087 or code == 1263 or code == 1276 or code == 1279 or code == 1282 then -- Lightning
 		assets.fore[10]:draw(x, y)
-	elseif code == 96 or code == 99 then
+	elseif code == 1237 or code == 1261 or code == 1264 then -- Hail
 		assets.fore[7]:draw(x, y)
 	end
 end
@@ -552,7 +546,7 @@ end
 function weather:refresh()
 	vars.iwarnedyouabouthttpbroitoldyoudog = true
 	vars.http_opened = false
-	vars.get_area = true
+	vars.get_data = true
 	if save.refresh ~= "manual" then
 		vars.refresh_timer:reset()
 	end
@@ -568,7 +562,7 @@ function weather:buildthefold()
 		gfx.setColor(gfx.kColorBlack)
 		gfx.drawPolygon(vars.polygon)
 		gfx.drawPolygon(vars.polygon2)
-		weather:drawlocaltime(50, true)
+		weather:drawwind(50, true)
 		weather:drawnow(50, false)
 		weather:drawhourlyforecast(130)
 		weather:drawfeelslike(210, true)
@@ -576,8 +570,14 @@ function weather:buildthefold()
 		weather:drawhumidity(290, true)
 		weather:drawprecipitation(290, false)
 		weather:drawtomorrow(370)
-		assets.smallcaps:drawText(text('weatherin') .. lower(area_response_json.results[save.area_result].name), 10, 8)
+		gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name) .. ', ' .. lower(response_json.location.region), 8, 8, 330, 30, 0, '...', kTextAlignment.center)
 		assets.roobert11:drawText(text('crank'), 370, 7)
+		gfx.drawLine(0, 450, 400, 450)
+		gfx.setColor(gfx.kColorWhite)
+		gfx.fillRect(0, 450, 400, 1000)
+		gfx.setColor(gfx.kColorBlack)
+		assets.smallcaps:drawText(text('lastchecked'), 10, 455)
+		assets.smallcaps:drawText((pd.shouldDisplay24HourTime() and format("%02d",vars.lastchecked.hour) .. ':' .. format("%02d",vars.lastchecked.minute)) or (((vars.lastchecked.hour % 12) == 0 and '12' or vars.lastchecked.hour % 12) .. ':' .. format("%02d",vars.lastchecked.minute) .. (vars.lastchecked.hour >= 12 and 'p' or 'a')), 10 + assets.smallcaps:getTextWidth(text('lastchecked')), 455)
 	gfx.popContext()
 	sprites.fold:setImage(assets.thefold)
 end

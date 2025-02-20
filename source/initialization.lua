@@ -29,23 +29,21 @@ function initialization:init(...)
 		vars.text = pd.keyboard.text
 	end
 
-	area_response_json = {}
-	weather_response_json = {}
+	response_json = {}
 
 	pd.keyboard.keyboardWillHideCallback = function(bool)
-		save.area_result = 0
 		if bool and vars.prompt == "welcome1" then
 			self:closeui()
 			save.area = vars.text
 			pd.timer.performAfterDelay(300, function()
 				self:openui("setup1")
 			end)
-		elseif bool and (vars.prompt == "changearea" or vars.prompt == "noarea" or vars.prompt == "whereareyouarea") then
+		elseif bool and (vars.prompt == "changearea" or vars.prompt == "noarea") then
 			self:closeui()
 			save.area = vars.text
 			pd.timer.performAfterDelay(300, function()
 				vars.http_opened = false
-				vars.get_area = true
+				vars.get_data = true
 			end)
 		end
 	end
@@ -79,12 +77,9 @@ function initialization:init(...)
 		crank_change = 0,
 		http_opened = true,
 		http = nil,
-		get_area = false,
-		area_response = nil,
-		area_response_formatted = nil,
-		get_weather = false,
-		weather_response = nil,
-		weather_response_formatted = nil,
+		get_data = false,
+		data_response = nil,
+		data_response_formatted = nil,
 		ui_timer = pd.timer.new(1, 240, 240),
 		ui_open = false,
 		ticker_open = false,
@@ -97,9 +92,6 @@ function initialization:init(...)
 		prompt = "",
 		setup1_selection = 1,
 		setup2_selection = 1,
-		results = 0,
-		result = 1,
-		result_timer = pd.timer.new(1, 1, 1),
 		iwarnedyouabouthttpbroitoldyoudog = true,
 	}
 	vars.welcome1Handlers = {
@@ -191,7 +183,7 @@ function initialization:init(...)
 			self:closeui()
 			pd.timer.performAfterDelay(300, function()
 				vars.http_opened = false
-				vars.get_area = true
+				vars.get_data = true
 			end)
 			if save.sfx then assets.select:play() end
 		end,
@@ -216,61 +208,6 @@ function initialization:init(...)
 			if save.sfx then assets.select:play() end
 		end
 	}
-	vars.whereareyouareaHandlers = {
-		AButtonDown = function()
-			pd.keyboard.show()
-			if save.sfx then assets.select:play() end
-		end
-	}
-	vars.whereareyouHandlers = {
-		upButtonDown = function()
-			if vars.keytimer ~= nil then vars.keytimer:remove() end
-			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
-				if vars.result > 1 then
-					if save.sfx then assets.move:play() end
-					vars.result -= 1
-					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
-				end
-			end)
-		end,
-
-		upButtonUp = function()
-			if vars.keytimer ~= nil then vars.keytimer:remove() end
-		end,
-
-		downButtonDown = function()
-			if vars.keytimer ~= nil then vars.keytimer:remove() end
-			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
-				if vars.result < vars.results then
-					if save.sfx then assets.move:play() end
-					vars.result += 1
-					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
-				end
-			end)
-		end,
-
-		downButtonUp = function()
-			if vars.keytimer ~= nil then vars.keytimer:remove() end
-		end,
-
-		AButtonDown = function()
-			self:closeui()
-			save.area_result = vars.result
-			pd.timer.performAfterDelay(300, function()
-				vars.http_opened = false
-				vars.get_weather = true
-			end)
-			if save.sfx then assets.select:play() end
-		end,
-
-		BButtonDown = function()
-			self:closeui()
-			pd.timer.performAfterDelay(300, function()
-				self:openui("whereareyouarea")
-			end)
-			if save.sfx then assets.back:play() end
-		end
-	}
 	vars.nointernetHandlers = {
 		AButtonDown = function()
 			self:closeui()
@@ -285,7 +222,7 @@ function initialization:init(...)
 							self:openui("welcome1")
 						else
 							vars.http_opened = false
-							vars.get_area = true
+							vars.get_data = true
 						end
 					end
 				end
@@ -300,7 +237,6 @@ function initialization:init(...)
 	vars.ui_timer.discardOnCompletion = false
 	vars.ticker_timer_x.discardOnCompletion = false
 	vars.ticker_timer_y.discardOnCompletion = false
-	vars.result_timer.discardOnCompletion = false
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		assets.bg[floor(random(1, 3))]:draw(0, 0)
@@ -321,7 +257,7 @@ function initialization:init(...)
 				assets.smallcaps:drawText(vars.ticker_string, vars.ticker_timer_x.value, vars.ticker_timer_y.value + 5)
 			end
 			if vars.ui_open then
-				if vars.prompt == "welcome1" or vars.prompt == "changearea" or vars.prompt == "noarea" or vars.prompt == "whereareyouarea" then
+				if vars.prompt == "welcome1" or vars.prompt == "changearea" or vars.prompt == "noarea" then
 					assets.roobert11:drawTextAligned(vars.text, 200 + (pd.keyboard.left() - 400) / 2, 155 + vars.ui_timer.value, kTextAlignment.center)
 				elseif vars.prompt == "setup1" then
 					gfx.setColor(gfx.kColorWhite)
@@ -331,27 +267,6 @@ function initialization:init(...)
 					gfx.setColor(gfx.kColorWhite)
 					gfx.drawRoundRect((vars.setup2_selection == 1 and 35 or 225), 115 + vars.ui_timer.value, 140, 50, 8)
 					gfx.setColor(gfx.kColorBlack)
-				elseif vars.prompt == "whereareyou" then
-					gfx.setClipRect(35, 90 + vars.ui_timer.value, 330, 90)
-					for i = 1, vars.results do
-						if area_response_json.results[i].admin1 ~= nil then
-							assets.smallcaps:drawTextAligned(lower(area_response_json.results[i].admin1), 350, 126 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.right)
-						end
-						local truncwidth = assets.smallcaps:getTextWidth(lower(area_response_json.results[i].admin1 or ''))
-						if area_response_json.results[i].name ~= nil then
-							gfx.drawTextInRect(area_response_json.results[i].name, 90, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 300 - truncwidth - 50, 25, 0, '...')
-						end
-						gfx.setColor(gfx.kColorWhite)
-						gfx.fillRoundRect(50, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 30, 20, 3)
-						gfx.setColor(gfx.kColorBlack)
-						gfx.setImageDrawMode(gfx.kDrawModeFillBlack)
-						assets.smallcaps:drawTextAligned(lower(area_response_json.results[i].country_code), 65, 126 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.center)
-						gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-					end
-					gfx.setColor(gfx.kColorXOR)
-					gfx.fillRect(40, 123 + vars.ui_timer.value, 320, 24)
-					gfx.setColor(gfx.kColorBlack)
-					gfx.clearClipRect()
 				end
 			end
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -368,7 +283,7 @@ function initialization:init(...)
 					self:openui("welcome1")
 				else
 					vars.http_opened = false
-					vars.get_area = true
+					vars.get_data = true
 				end
 			end
 		end
@@ -396,21 +311,8 @@ function initialization:init(...)
 end
 
 function initialization:update()
-	if vars.prompt == "whereareyou" then
-		local ticks = pd.getCrankTicks(5)
-		if ticks ~= 0 and vars.result > 0 then
-			if save.sfx then assets.crank:play() end
-			vars.result += ticks
-			if vars.result < 1 then
-				vars.result = 1
-			elseif vars.result > vars.results then
-				vars.result = vars.results
-			end
-			vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
-		end
-	end
 	vars.crank_change += pd.getCrankChange()
-	if vars.get_area then
+	if vars.get_data then
 		if net.getStatus() == net.kStatusNotAvailable then
 			self:openui("nointernet")
 		else
@@ -424,94 +326,47 @@ function initialization:update()
 			end
 			if save.setup then
 				save.setup = false
+				first_check = false
 			end
-			http:get("/v1/search?name=" .. urlencode(save.area) .. "&count=10&language=en&format=json")
+			http:get("/v1/forecast.json?key=" .. key .. "&q=" .. urlencode(save.area) .. "&days=2&aqi=yes")
 			http:setRequestCompleteCallback(function()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
-				vars.area_response = http:read(bytes)
-				if find(vars.area_response, "Bad Gateway") or vars.area_response == "" then
+				vars.data_response = http:read(bytes)
+				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
 					self:closeticker()
 					self:openui("noarea")
 					http:close()
 					return
 				else
-					local response_start = 0
-					local response_end = 0
-					for i = 1, len(vars.area_response) do
-						if byte(vars.area_response, i) == byte("{") then
-							response_start = i
-							break
+					-- chunk data here
+					vars.data_response_formatted = ""
+					local index = 1
+					for line in string.gmatch(vars.data_response, "[^\r?\n]+") do
+					 	if index % 2 == 1 then
+					  		vars.data_response_formatted = vars.data_response_formatted .. line
 						end
+						index += 1
 					end
-					for i = len(vars.area_response), 1, -1 do
-						if byte(vars.area_response, i) == byte("}") then
+					local response_end = 0
+					for i = len(vars.data_response_formatted), 1, -1 do
+						if byte(vars.data_response_formatted, i) == byte("}") then
 							response_end = i
 							break
 						end
 					end
-					vars.area_response_formatted = sub(vars.area_response, response_start, response_end)
-					area_response_json = json.decode(vars.area_response_formatted)
+					string.gsub(vars.data_response, "[^\r?\n]+", "")
+					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
+					response_json = json.decode(vars.data_response_formatted)
+					printTable(response_json)
 					http:close()
-				end
-				if area_response_json.results == nil then
 					self:closeticker()
-					self:openui("noarea")
-				else
-					vars.results = #area_response_json.results
-					if vars.results > 1 and save.area_result == 0 then
-						self:closeticker()
-						vars.result = 1
-						self:openui("whereareyou")
-					else
-						save.area_result = 1
-						vars.http_opened = false
-						vars.get_weather = true
-					end
+					fademusic(5000)
+					scenemanager:transitionscene(weather)
 				end
 			end)
 		end
-		vars.get_area = false
-	end
-	if vars.get_weather then
-		if net.getStatus() == net.kStatusNotAvailable then
-			self:openui("nointernet")
-		else
-			if not vars.ticker_open then
-				self:openticker(text("contacting"))
-				if save.sfx then assets.connect:play() end
-			end
-			local speed = ""
-			local meas = ""
-			local temp = ""
-			http:get("https://api.open-meteo.com/v1/forecast?latitude=".. area_response_json.results[save.area_result].latitude .."&longitude=" .. area_response_json.results[save.area_result].longitude .. "&current=relative_humidity_2m,temperature_2m,weather_code,apparent_temperature,precipitation,is_day&hourly=temperature_2m,weather_code,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code&timezone="  .. area_response_json.results[save.area_result].timezone .. "&forecast_days=2&timeformat=unixtime")
-			http:setRequestCompleteCallback(function()
-				http:setConnectTimeout(10)
-				local bytes = http:getBytesAvailable()
-				vars.weather_response = http:read(bytes)
-				local response_start = 0
-				local response_end = 0
-				for i = 1, len(vars.weather_response) do
-					if byte(vars.weather_response, i) == byte("{") then
-						response_start = i
-						break
-					end
-				end
-				for i = len(vars.weather_response), 1, -1 do
-					if byte(vars.weather_response, i) == byte("}") then
-						response_end = i
-						break
-					end
-				end
-				vars.weather_response_formatted = sub(vars.weather_response, response_start, response_end)
-				weather_response_json = json.decode(vars.weather_response_formatted)
-				http:close()
-				self:closeticker()
-				fademusic(5000)
-				scenemanager:transitionscene(weather)
-			end)
-		end
-		vars.get_weather = false
+		vars.get_data = false
 	end
 end
 
@@ -544,7 +399,7 @@ function initialization:openui(prompt)
 		assets.ashe:drawTextAligned(text(prompt), 200, 20, kTextAlignment.center)
 		assets.roobert11:drawTextAligned(text(prompt .. '_text'), 200, 55, kTextAlignment.center)
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
-		if prompt == "welcome1" or prompt == "changearea" or prompt == "noarea" or prompt == "whereareyouarea" then
+		if prompt == "welcome1" or prompt == "changearea" or prompt == "noarea" then
 			gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
 			gfx.fillRoundRect(40, 150, 320, 30, 5)
 			gfx.setColor(gfx.kColorWhite)
@@ -570,13 +425,6 @@ function initialization:openui(prompt)
 			assets.roobert11:drawTextAligned(text('imperial'), 295, 130, kTextAlignment.center)
 		elseif prompt == "welcome2" then
 			assets.roobert11:drawTextAligned(text('ok'), 200, 200, kTextAlignment.center)
-		elseif prompt == "whereareyou" then
-			gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
-			gfx.fillRoundRect(35, 90, 330, 90, 5)
-			gfx.setColor(gfx.kColorWhite)
-			gfx.drawRoundRect(35, 90, 330, 90, 5)
-			gfx.setColor(gfx.kColorBlack)
-			assets.roobert11:drawTextAligned(text('select_crank'), 200, 200, kTextAlignment.center)
 		elseif prompt == "nointernet" then
 			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
 		end
