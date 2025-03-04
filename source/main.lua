@@ -33,7 +33,9 @@ gfx.setBackgroundColor(gfx.kColorWhite)
 gfx.setLineWidth(2)
 
 first_check = true
-key = '314ada2cfd7a4afda5e12603250702'
+key = nil
+
+assert(key ~= nil, 'Hi, please input a weatherapi.com API key to continue! If you\'re seeing this error, you know what you\'re doing. If you don\'t, please get in touch!')
 
 -- Save check
 function savecheck()

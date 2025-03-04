@@ -14,6 +14,7 @@ local find <const> = string.find
 local len <const> = string.len
 local byte <const> = string.byte
 local sub <const> = string.sub
+local gmatch <const> = string.gmatch
 
 class('weather').extends(gfx.sprite) -- Create the scene's class
 function weather:init(...)
@@ -59,6 +60,8 @@ function weather:init(...)
 		wind = gfx.image.new('images/wind'),
 		compass = gfx.image.new('images/compass'),
 		crank = smp.new('audio/sfx/crank'),
+		crank_pull = smp.new('audio/sfx/crank_pull'),
+		moon = gfx.imagetable.new('images/moon'),
 	}
 
 	gfx.setFont(assets.smallcaps)
@@ -76,6 +79,7 @@ function weather:init(...)
 		data_response_formatted = nil,
 		lo_power = false,
 		chargebool = pd.getPowerStatus().charging,
+		moon = random(1, 10),
 	}
 
 	vars.hourly_start = vars.localtime.hour
@@ -118,17 +122,37 @@ function weather:init(...)
 		vars.default2_timer.reverses = true
 		vars.default2_timer.repeats = true
 	elseif save.wallpaper == 2 then
+		local earthtime = args[1] or 30000
+		local earthvalue = args[2] or 1
+		local starsltime = args[3] or 45000
+		local starslvalue = args[4] or -400
+		local starsstime = args[5] or 30000
+		local starssvalue = args[6] or -400
+		if earthtime ~= 30000 then
+			vars.ui_timer = pd.timer.new(250, -100, 0, pd.easingFunctions.outSine)
+		else
+			vars.ui_timer = pd.timer.new(1, 0, 0)
+		end
+		vars.crank_change = args[7] or 0
 		assets.earth = gfx.imagetable.new('images/earth')
 		assets.bg = gfx.imagetable.new('images/bg')
 		assets.stars_s = gfx.image.new('images/stars_s')
 		assets.stars_l = gfx.image.new('images/stars_l')
-		vars.earth_timer = pd.timer.new(30000, 1, 300)
-		vars.stars_l = pd.timer.new(45000, -400, 0)
-		vars.stars_s = pd.timer.new(30000, -400, 0)
-		vars.crank_change = 0
-		vars.earth_timer.repeats = true
-		vars.stars_l.repeats = true
-		vars.stars_s.repeats = true
+		vars.earth_timer = pd.timer.new(earthtime, earthvalue, 300)
+		vars.stars_l = pd.timer.new(starsltime, starslvalue, 0)
+		vars.stars_s = pd.timer.new(starsstime, starssvalue, 0)
+		vars.earth_timer.timerEndedCallback = function()
+			vars.earth_timer:resetnew(30000, 1, 300)
+			vars.earth_timer.repeats = true
+		end
+		vars.stars_l.timerEndedCallback = function()
+			vars.stars_l:resetnew(45000, -400, 0)
+			vars.stars_l.repeats = true
+		end
+		vars.stars_s.timerEndedCallback = function()
+			vars.stars_s:resetnew(30000, -400, 0)
+			vars.stars_s.repeats = true
+		end
 	elseif save.wallpaper == 3 then
 		assets.miko = gfx.font.new('fonts/miko')
 	elseif save.wallpaper == 4 then
@@ -142,7 +166,7 @@ function weather:init(...)
 			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205) -- todo: convert this to my own thing l8r
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
-			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			assets.default1:draw((vars.default1_timer.value // 2) * 2, 0)
 			assets.default2:draw(vars.default2_timer.value, 0)
 		elseif save.wallpaper == 2 then
@@ -151,27 +175,27 @@ function weather:init(...)
 			assets.stars_l:draw(((vars.stars_l.value + (vars.crank_change / 1.2)) % 400) - 400, 0)
 			assets.earth[floor((vars.earth_timer.value + (vars.crank_change / 1.8)) % 299) + 1]:draw(100, 140)
 			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18)
-			assets.roobert11:drawText(response_json.current.condition.text, 18, 48)
-			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18, kTextAlignment.right)
-			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 18, 2)
+			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18 + vars.ui_timer.value or 0)
+			assets.roobert11:drawText(response_json.current.condition.text, 18, 48 + vars.ui_timer.value)
+			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18 + vars.ui_timer.value, kTextAlignment.right)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 18 + vars.ui_timer.value)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		elseif save.wallpaper == 3 then
 			assets.miko:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 215, 65, kTextAlignment.center)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
-			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 4 then
 			assets.miko:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute)), 200, 65, kTextAlignment.center)
 			assets.roobert11:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°, ' .. response_json.current.condition.text, 18, 205)
-			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 5 then
 			assets.customimage:draw(0, 0)
 			gfx.setImageDrawMode(gfx.kDrawModeNXOR)
 			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
 			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
-			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:drawScaled(355, 205, 2)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		end
 	end)
@@ -201,10 +225,10 @@ function weather:init(...)
 			else
 				self.crank = 0
 			end
-			if self.y <= -230 then
-				self:moveTo(self.x, self.y += (-230 - self.y) * 0.3)
-				if self.y < -230.1 and self.y > -229.9 then
-					self:moveTo(self.x, -230)
+			if self.y <= -390 then
+				self:moveTo(self.x, self.y += (-390 - self.y) * 0.3)
+				if self.y < -390.1 and self.y > -389.9 then
+					self:moveTo(self.x, -390)
 				end
 			end
 			if pd.getCrankChange() > 0 then
@@ -290,8 +314,14 @@ function weather:update()
 		end
 	end
 	if vars.chargebool then
-		if pd.getCrankTicks(8) ~= 0 and save.sfx then
-			assets.crank:play()
+		if sprites.fold.y <= -310 then
+			if pd.getCrankTicks(6) ~= 0 and save.sfx then
+				assets.crank_pull:play()
+			end
+		else
+			if pd.getCrankTicks(10) ~= 0 and save.sfx then
+				assets.crank:play()
+			end
 		end
 		if save.wallpaper == 2 then
 			vars.crank_change += pd.getCrankChange()
@@ -325,7 +355,7 @@ function weather:update()
 					-- chunk data here
 					vars.data_response_formatted = ""
 					local index = 1
-					for line in string.gmatch(vars.data_response, "[^\r?\n]+") do
+					for line in gmatch(vars.data_response, "[^\r?\n]+") do
 						 if index % 2 == 1 then
 							  vars.data_response_formatted = vars.data_response_formatted .. line
 						end
@@ -338,7 +368,6 @@ function weather:update()
 							break
 						end
 					end
-					string.gsub(vars.data_response, "[^\r?\n]+", "")
 					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
 					response_json = json.decode(vars.data_response_formatted)
 					http:close()
@@ -358,10 +387,10 @@ end
 
 function weather:calcsuntimes()
 	if pd.shouldDisplay24HourTime() then
-		if find(vars.sunrise, "PM") then vars.sunrise = vars.sunrise:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunrise,1,2)) + 12) % 24), 1) end
-		if find(vars.sunset, "PM") then vars.sunset = vars.sunset:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunset,1,2)) + 12) % 24), 1) end
-		if find(vars.sunrise2, "PM") then vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunrise2,1,2)) + 12) % 24), 1) end
-		if find(vars.sunset2, "PM") then vars.sunset2 = vars.sunset2:gsub("[0-9]+", format("%02d",(tonumber(string.sub(vars.sunset2,1,2)) + 12) % 24), 1) end
+		if find(vars.sunrise, "PM") then vars.sunrise = vars.sunrise:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunrise,1,2)) + 12) % 24), 1) end
+		if find(vars.sunset, "PM") then vars.sunset = vars.sunset:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunset,1,2)) + 12) % 24), 1) end
+		if find(vars.sunrise2, "PM") then vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunrise2,1,2)) + 12) % 24), 1) end
+		if find(vars.sunset2, "PM") then vars.sunset2 = vars.sunset2:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunset2,1,2)) + 12) % 24), 1) end
 
 		vars.sunrise = vars.sunrise:gsub(" AM", "")
 		vars.sunset = vars.sunset:gsub(" AM", "")
@@ -373,10 +402,10 @@ function weather:calcsuntimes()
 		vars.sunrise2 = vars.sunrise2:gsub(" PM", "")
 		vars.sunset2 = vars.sunset2:gsub(" PM", "")
 	else
-		vars.sunrise = vars.sunrise:gsub("[0-9]+", tonumber(string.sub(vars.sunrise,1,2)), 1)
-		vars.sunset = vars.sunset:gsub("[0-9]+", tonumber(string.sub(vars.sunset,1,2)), 1)
-		vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", tonumber(string.sub(vars.sunrise2,1,2)), 1)
-		vars.sunset2 = vars.sunset2:gsub("[0-9]+", tonumber(string.sub(vars.sunset2,1,2)), 1)
+		vars.sunrise = vars.sunrise:gsub("[0-9]+", tonumber(sub(vars.sunrise,1,2)), 1)
+		vars.sunset = vars.sunset:gsub("[0-9]+", tonumber(sub(vars.sunset,1,2)), 1)
+		vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", tonumber(sub(vars.sunrise2,1,2)), 1)
+		vars.sunset2 = vars.sunset2:gsub("[0-9]+", tonumber(sub(vars.sunset2,1,2)), 1)
 
 		vars.sunrise = vars.sunrise:gsub(" AM", "a")
 		vars.sunset = vars.sunset:gsub(" AM", "a")
@@ -417,6 +446,18 @@ function weather:drawhourlyforecast(y)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
+function weather:drawmoon(y, left)
+	gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
+	gfx.fillRoundRect((left and 20 or 210), y, 170, 70, 5)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
+	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+	assets.smallcaps:drawText(text('moonphase'), (left and 20 or 210) + 5, y + 5)
+	assets.smallcaps:drawText(text(weather:returnmoonphase(response_json.forecast.forecastday[1].astro.moon_phase, false)), (left and 20 or 210) + 5, y + 31)
+	gfx.setImageDrawMode(gfx.kDrawModeCopy)
+	weather:drawmoonphase(weather:returnmoonphase(response_json.forecast.forecastday[1].astro.moon_phase, true), (left and 131 or 321), y + 9)
+end
+
 function weather:drawwind(y, left)
 	gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
 	gfx.fillRoundRect((left and 20 or 210), y, 170, 70, 5)
@@ -430,6 +471,34 @@ function weather:drawwind(y, left)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 	assets.compass:draw((left and 125 or 315), y + 5)
 	assets.wind:drawRotated((left and 155 or 345), y + 35, response_json.current.wind_degree - 180)
+end
+
+function weather:drawairqualityindex(y, left)
+	gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
+	gfx.fillRoundRect((left and 20 or 210), y, 170, 70, 5)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRoundRect((left and 20 or 210), y, 170, 70, 5)
+	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+	assets.smallcaps:drawText(text('airquality'), (left and 20 or 210) + 5, y + 5)
+	assets.roobert11:drawText(text('epa'), (left and 20 or 210) + 5, y + 31)
+	assets.roobert24:drawText(response_json.current.air_quality['us-epa-index'], (left and 20 or 210) + 8 + assets.roobert11:getTextWidth(text('epa')), y + 21)
+	assets.smallcaps:drawText(text('defra') .. response_json.current.air_quality['gb-defra-index'], (left and 20 or 210) + 5, y + 50)
+	gfx.setImageDrawMode(gfx.kDrawModeCopy)
+end
+
+function weather:drawairquality(y)
+	gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
+	gfx.fillRoundRect(20, y, 360, 70, 5)
+	gfx.setColor(gfx.kColorBlack)
+	gfx.drawRoundRect(20, y, 360, 70, 5)
+	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+	assets.smallcaps:drawText(text('co') .. response_json.current.air_quality.co .. text('ppb'), 29, y + 7)
+	assets.smallcaps:drawText(text('no2') .. response_json.current.air_quality.no2 .. text('ppb'), 29, y + 28)
+	assets.smallcaps:drawText(text('o3') .. response_json.current.air_quality.o3 .. text('ppb'), 29, y + 48)
+	assets.smallcaps:drawTextAligned(text('pm10') .. response_json.current.air_quality.pm10 .. text('ugm3'), 371, y + 7, kTextAlignment.right)
+	assets.smallcaps:drawTextAligned(text('pm25') .. response_json.current.air_quality.pm2_5 .. text('ugm3'), 371, y + 28, kTextAlignment.right)
+	assets.smallcaps:drawTextAligned(text('so2') .. response_json.current.air_quality.so2 .. text('ppb'), 371, y + 48, kTextAlignment.right)
+	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end
 
 function weather:drawnow(y, left)
@@ -543,6 +612,54 @@ function weather:drawfore(code, x, y)
 	end
 end
 
+function weather:returnmoonphase(str, num)
+	if num then
+		if str == "Waxing Crescent" then
+			return 1
+		elseif str == "First Quarter" then
+			return 2
+		elseif str == "Waxing Gibbous" then
+			return 3
+		elseif str == "Full Moon" then
+			return 4
+		elseif str == "Waning Gibbous" then
+			return 5
+		elseif str == "Last Quarter" then
+			return 6
+		elseif str == "Waning Crescent" then
+			return 7
+		elseif str == "New Moon" then
+			return 8
+		end
+	else
+		if str == "Waxing Crescent" then
+			return "waxingcrescent"
+		elseif str == "First Quarter" then
+			return "firstquarter"
+		elseif str == "Waxing Gibbous" then
+			return "waxinggibbous"
+		elseif str == "Full Moon" then
+			return "fullmoon"
+		elseif str == "Waning Gibbous" then
+			return "waninggibbous"
+		elseif str == "Last Quarter" then
+			return "lastquarter"
+		elseif str == "Waning Crescent" then
+			return "waningcrescent"
+		elseif str == "New Moon" then
+			return "newmoon"
+		end
+	end
+end
+
+function weather:drawmoonphase(num, x, y)
+	if vars.moon > 9 then
+		assets.moon[num + 8]:draw(x, y)
+	else
+		assets.moon[num]:draw(x, y)
+	end
+end
+
 function weather:refresh()
 	vars.iwarnedyouabouthttpbroitoldyoudog = true
 	vars.http_opened = false
@@ -562,22 +679,25 @@ function weather:buildthefold()
 		gfx.setColor(gfx.kColorBlack)
 		gfx.drawPolygon(vars.polygon)
 		gfx.drawPolygon(vars.polygon2)
-		weather:drawwind(50, true)
-		weather:drawnow(50, false)
+		weather:drawnow(50, true)
+		weather:drawfeelslike(50, false)
 		weather:drawhourlyforecast(130)
-		weather:drawfeelslike(210, true)
-		weather:drawsuntimes(210, false)
-		weather:drawhumidity(290, true)
-		weather:drawprecipitation(290, false)
-		weather:drawtomorrow(370)
+		weather:drawwind(210, true)
+		weather:drawairqualityindex(210, false)
+		weather:drawairquality(290, false)
+		weather:drawhumidity(370, true)
+		weather:drawprecipitation(370, false)
+		weather:drawtomorrow(450)
+		weather:drawmoon(530, true)
+		weather:drawsuntimes(530, false)
 		gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name) .. ', ' .. lower(response_json.location.region), 10, 8, 330, 30, 0, '...')
 		assets.roobert11:drawText(text('crank'), 370, 7)
-		gfx.drawLine(0, 450, 400, 450)
+		gfx.drawLine(0, 610, 400, 610)
 		gfx.setColor(gfx.kColorWhite)
-		gfx.fillRect(0, 450, 400, 1000)
+		gfx.fillRect(0, 610, 400, 1500)
 		gfx.setColor(gfx.kColorBlack)
-		assets.smallcaps:drawText(text('lastchecked'), 10, 455)
-		assets.smallcaps:drawText((pd.shouldDisplay24HourTime() and format("%02d",vars.lastchecked.hour) .. ':' .. format("%02d",vars.lastchecked.minute)) or (((vars.lastchecked.hour % 12) == 0 and '12' or vars.lastchecked.hour % 12) .. ':' .. format("%02d",vars.lastchecked.minute) .. (vars.lastchecked.hour >= 12 and 'p' or 'a')), 10 + assets.smallcaps:getTextWidth(text('lastchecked')), 455)
+		assets.smallcaps:drawText(text('lastchecked'), 10, 615)
+		assets.smallcaps:drawText((pd.shouldDisplay24HourTime() and format("%02d",vars.lastchecked.hour) .. ':' .. format("%02d",vars.lastchecked.minute)) or (((vars.lastchecked.hour % 12) == 0 and '12' or vars.lastchecked.hour % 12) .. ':' .. format("%02d",vars.lastchecked.minute) .. (vars.lastchecked.hour >= 12 and 'p' or 'a')), 10 + assets.smallcaps:getTextWidth(text('lastchecked')), 615)
 	gfx.popContext()
 	sprites.fold:setImage(assets.thefold)
 end

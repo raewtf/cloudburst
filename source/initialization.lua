@@ -355,14 +355,19 @@ function initialization:update()
 							break
 						end
 					end
-					string.gsub(vars.data_response, "[^\r?\n]+", "")
 					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
 					response_json = json.decode(vars.data_response_formatted)
 					printTable(response_json)
 					http:close()
 					self:closeticker()
 					fademusic(5000)
-					scenemanager:transitionscene(weather)
+					if save.wallpaper == 2 then
+						pd.timer.performAfterDelay(250, function()
+							scenemanager:switchscene(weather, vars.earth_timer.timeLeft, vars.earth_timer.value, vars.stars_l.timeLeft, vars.stars_l.value, vars.stars_s.timeLeft, vars.stars_s.value, vars.crank_change)
+						end)
+					else
+						scenemanager:transitionscene(weather)
+					end
 				end
 			end)
 		end
