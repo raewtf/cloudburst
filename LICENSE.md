@@ -14,7 +14,7 @@ The rest of the code made by rae, except where noted.
 
 MIT License
 
-Copyright (c) 2024 rae
+Copyright (c) 2025 rae
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
