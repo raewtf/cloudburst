@@ -42,6 +42,7 @@ function savecheck()
 	save = pd.datastore.read()
 	if save == nil then save = {} end
 	save.area = save.area or ""
+	save.areas = save.areas or {}
 	save.temp = save.temp or "celsius"
 	save.speed = save.speed or "kph"
 	save.meas = save.meas or "mm"
@@ -49,6 +50,8 @@ function savecheck()
 	save.autolock = save.autolock or 20
 	save.wallpaper = save.wallpaper or 1
 	save.invert = save.invert or 1
+	save.twofour = save.twofour or 1
+	save.recentareas = save.recentareas or 10
 	if save.found_retro == nil then save.found_retro = false end
 	if save.retro == nil then save.retro = false end
 	if save.sfx == nil then save.sfx = true end
@@ -65,6 +68,26 @@ if save.wallpaper == 5 and pd.datastore.readImage('images/custom') == nil then
 end
 lasthour = 0
 lastminute = 0
+local pause = gfx.image.new('images/pause')
+local pause_full = gfx.image.new('images/pause_full')
+local roobert10 = gfx.font.new('fonts/roobert10')
+local pause_copy = gfx.image.new(400, 240)
+
+function pauseimage(scene, tip)
+	pause_copy = gfx.image.new(400, 240)
+	gfx.pushContext(pause_copy)
+	if tip then
+		pause:draw(0, 0)
+		roobert10:drawText(text('tip' .. math.random(1, 20)), 9, 152)
+	else
+		pause_full:draw(0, 0)
+	end
+		roobert10:drawText('Cloudburst', 26, 5)
+		roobert10:drawTextAligned('v' .. pd.metadata.version, 195, 5, kTextAlignment.right)
+		roobert10:drawText(text(scene .. '_help'), 5, 35)
+	gfx.popContext()
+	pd.setMenuImage(pause_copy)
+end
 
 if save.invert == 1 then
 	pd.display.setInverted(false)
@@ -179,7 +202,7 @@ scenemanager:transitionsceneout(initialization)
 
 function pd.update()
 	if not vars.http_opened and vars.iwarnedyouabouthttpbroitoldyoudog then
-		http = net.http.new("api.weatherapi.com", 443, true, "using your local area to access location info.")
+		http = net.http.new("api.weatherapi.com", 443, true, "using your location info to retrieve weather data from weatherapi.com.")
 		assert(http, 'Hi, please allow access to the network connection gates to use this app! Head to Settings > Permissions > Cloudburst, and set the Network permissions to "allow".')
 		vars.http_opened = true
 	end

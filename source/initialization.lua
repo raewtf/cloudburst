@@ -13,16 +13,19 @@ local find <const> = string.find
 local len <const> = string.len
 local byte <const> = string.byte
 local sub <const> = string.sub
+local gmatch <const> = string.gmatch
 
 class('initialization').extends(gfx.sprite) -- Create the scene's class
 function initialization:init(...)
 	initialization.super.init(self)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(true) -- Should this scene redraw the sprites constantly?
+	pd.datastore.write(save)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
 		menu:removeAllMenuItems()
+		pauseimage('initialization', false) -- TODO: make true later
 	end
 
 	pd.keyboard.textChangedCallback = function()
@@ -62,8 +65,10 @@ function initialization:init(...)
 		error = smp.new('audio/sfx/error'),
 		move = smp.new('audio/sfx/move'),
 		select = smp.new('audio/sfx/select'),
+		poof = gfx.imagetable.new('images/poof'),
 		connect = smp.new('audio/sfx/connect'),
 		back = smp.new('audio/sfx/back'),
+		sfx_poof = smp.new('audio/sfx/poof'),
 		crank = smp.new('audio/sfx/crank'),
 	}
 
@@ -90,8 +95,11 @@ function initialization:init(...)
 		ticker_string = "",
 		text = "",
 		prompt = "",
+		result = 1,
+		poof_timer = pd.timer.new(1, 5, 5),
 		setup1_selection = 1,
 		setup2_selection = 1,
+		result_timer = pd.timer.new(1, 1, 1),
 		iwarnedyouabouthttpbroitoldyoudog = true,
 	}
 	vars.welcome1Handlers = {
@@ -208,6 +216,65 @@ function initialization:init(...)
 			if save.sfx then assets.select:play() end
 		end
 	}
+	vars.changeareamultHandlers = {
+		upButtonDown = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
+				if vars.result > 1 then
+					if save.sfx then assets.move:play() end
+					vars.result -= 1
+					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+				end
+			end)
+		end,
+
+		upButtonUp = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+		end,
+
+		downButtonDown = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+			vars.keytimer = pd.timer.keyRepeatTimerWithDelay(150, 75, function()
+				if vars.result < #save.areas+1 then
+					if save.sfx then assets.move:play() end
+					vars.result += 1
+					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+				end
+			end)
+		end,
+
+		downButtonUp = function()
+			if vars.keytimer ~= nil then vars.keytimer:remove() end
+		end,
+
+		AButtonDown = function()
+			self:closeui()
+			if vars.result == 1 then
+				pd.timer.performAfterDelay(300, function()
+					self:openui("changearea")
+				end)
+			else
+				save.area = save.areas[vars.result-1]
+				pd.timer.performAfterDelay(300, function()
+					vars.http_opened = false
+					vars.get_data = true
+				end)
+			end
+			if save.sfx then assets.select:play() end
+		end,
+
+		BButtonDown = function()
+			if vars.result > 2 then
+				if save.sfx then assets.sfx_poof:play() end
+				vars.poof_timer:resetnew(150, 1, 5, pd.easingFunctions.outSine)
+				table.remove(save.areas, vars.result-1)
+				if vars.result > #save.areas+1 then
+					vars.result = #save.areas+1
+					vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+				end
+			end
+		end
+	}
 	vars.nointernetHandlers = {
 		AButtonDown = function()
 			self:closeui()
@@ -237,6 +304,8 @@ function initialization:init(...)
 	vars.ui_timer.discardOnCompletion = false
 	vars.ticker_timer_x.discardOnCompletion = false
 	vars.ticker_timer_y.discardOnCompletion = false
+	vars.result_timer.discardOnCompletion = false
+	vars.poof_timer.discardOnCompletion = false
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		assets.bg[floor(random(1, 3))]:draw(0, 0)
@@ -267,6 +336,25 @@ function initialization:init(...)
 					gfx.setColor(gfx.kColorWhite)
 					gfx.drawRoundRect((vars.setup2_selection == 1 and 35 or 225), 115 + vars.ui_timer.value, 140, 50, 8)
 					gfx.setColor(gfx.kColorBlack)
+				elseif vars.prompt == "changeareamult" then
+					gfx.setClipRect(35, 90 + vars.ui_timer.value, 330, 90)
+					for i = 1, #save.areas+1 do
+						gfx.drawTextInRect(save.areas[i-1] or text('newlocation'), 50, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 190, 25, 0, '...')
+					end
+					gfx.setColor(gfx.kColorWhite)
+					gfx.fillRoundRect(350, 175 + vars.ui_timer.value - (25 * vars.result_timer.value), -100, 20, 3)
+					gfx.setImageDrawMode(gfx.kDrawModeCopy)
+					assets.smallcaps:drawTextAligned(text('current'), 300, 176 + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.center)
+					gfx.setColor(gfx.kColorXOR)
+					gfx.fillRect(40, 123 + vars.ui_timer.value, 320, 24)
+					gfx.setColor(gfx.kColorBlack)
+					gfx.clearClipRect()
+					if vars.result <= 2 then
+						assets.roobert11:drawTextAligned(text('changeareamult_controlsii'), 200, 200 + vars.ui_timer.value, kTextAlignment.center)
+					else
+						assets.roobert11:drawTextAligned(text('changeareamult_controls'), 200, 200 + vars.ui_timer.value, kTextAlignment.center)
+					end
+					assets.poof[floor(vars.poof_timer.value)]:draw(23, 107 + vars.ui_timer.value)
 				end
 			end
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -311,6 +399,19 @@ function initialization:init(...)
 end
 
 function initialization:update()
+	if vars.prompt == "changeareamult" then
+		local ticks = pd.getCrankTicks(5)
+		if ticks ~= 0 and vars.result > 0 then
+			if save.sfx then assets.crank:play() end
+			vars.result += ticks
+			if vars.result < 1 then
+				vars.result = 1
+			elseif vars.result > #save.areas+1 then
+				vars.result = #save.areas+1
+			end
+			vars.result_timer:resetnew(50, vars.result_timer.value, vars.result)
+		end
+	end
 	vars.crank_change += pd.getCrankChange()
 	if vars.get_data then
 		if net.getStatus() == net.kStatusNotAvailable then
@@ -339,10 +440,27 @@ function initialization:update()
 					http:close()
 					return
 				else
+					if save.recentareas == 0 then
+						save.areas = {}
+					else
+						for i = 1, #save.areas do
+							if save.areas[i] == save.area then
+								table.remove(save.areas, i)
+							end
+						end
+						table.insert(save.areas, 1, save.area)
+						if save.recentareas ~= 51 then
+							if #save.areas > save.recentareas then
+								for i = 1, #save.areas - save.recentareas do
+									table.remove(save.areas, #save.areas - (i-1))
+								end
+							end
+						end
+					end
 					-- chunk data here
 					vars.data_response_formatted = ""
 					local index = 1
-					for line in string.gmatch(vars.data_response, "[^\r?\n]+") do
+					for line in gmatch(vars.data_response, "[^\r?\n]+") do
 					 	if index % 2 == 1 then
 					  		vars.data_response_formatted = vars.data_response_formatted .. line
 						end
@@ -357,7 +475,6 @@ function initialization:update()
 					end
 					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
 					response_json = json.decode(vars.data_response_formatted)
-					printTable(response_json)
 					http:close()
 					self:closeticker()
 					fademusic(5000)
@@ -430,6 +547,12 @@ function initialization:openui(prompt)
 			assets.roobert11:drawTextAligned(text('imperial'), 295, 130, kTextAlignment.center)
 		elseif prompt == "welcome2" then
 			assets.roobert11:drawTextAligned(text('ok'), 200, 200, kTextAlignment.center)
+		elseif prompt == "changeareamult" then
+			gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
+			gfx.fillRoundRect(35, 90, 330, 90, 5)
+			gfx.setColor(gfx.kColorWhite)
+			gfx.drawRoundRect(35, 90, 330, 90, 5)
+			gfx.setColor(gfx.kColorBlack)
 		elseif prompt == "nointernet" then
 			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
 		end

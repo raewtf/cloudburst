@@ -9,10 +9,12 @@ function credits:init(...)
 	credits.super.init(self)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(false) -- Should this scene redraw the sprites constantly?
+	pd.datastore.write(save)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
 		menu:removeAllMenuItems()
+		pauseimage('credits', false) -- TODO: make true later
 	end
 
 	assets = {
@@ -35,7 +37,6 @@ function credits:init(...)
 
 	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
 		assets.ashe:drawTextAligned(text('credits'), 200, 10, kTextAlignment.center)
-		assets.smallcaps:drawText(pd.metadata.version, 10, 10)
 		gfx.drawLine(0, 45, 400, 45)
 		gfx.drawLine(0, 208, 400, 208)
 		gfx.setDitherPattern(0.75, gfx.image.kDitherTypeBayer2x2)

@@ -21,6 +21,7 @@ function weather:init(...)
 	weather.super.init(self)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(false) -- Should this scene redraw the sprites constantly?
+	pd.datastore.write(save)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
@@ -40,6 +41,7 @@ function weather:init(...)
 				scenemanager:transitionscene(credits)
 			end)
 		end
+		pauseimage('weather', false) -- TODO: make true later
 	end
 
 	function pd.gameWillResume()
@@ -165,7 +167,7 @@ function weather:init(...)
 		if save.wallpaper == 1 then
 			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205) -- todo: convert this to my own thing l8r
-			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			assets.default1:draw((vars.default1_timer.value // 2) * 2, 0)
 			assets.default2:draw(vars.default2_timer.value, 0)
@@ -177,16 +179,16 @@ function weather:init(...)
 			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18 + vars.ui_timer.value or 0)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 48 + vars.ui_timer.value)
-			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18 + vars.ui_timer.value, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18 + vars.ui_timer.value, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 18 + vars.ui_timer.value)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		elseif save.wallpaper == 3 then
 			assets.miko:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 215, 65, kTextAlignment.center)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
-			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 4 then
-			assets.miko:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute)), 200, 65, kTextAlignment.center)
+			assets.miko:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute)), 200, 65, kTextAlignment.center)
 			assets.roobert11:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°, ' .. response_json.current.condition.text, 18, 205)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 5 then
@@ -194,7 +196,7 @@ function weather:init(...)
 			gfx.setImageDrawMode(gfx.kDrawModeNXOR)
 			assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 			assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
-			assets.roobert11:drawTextAligned((pd.shouldDisplay24HourTime() and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		end
@@ -314,7 +316,7 @@ function weather:update()
 		end
 	end
 	if vars.chargebool then
-		if sprites.fold.y <= -310 then
+		if sprites.fold.y <= -390 then
 			if pd.getCrankTicks(6) ~= 0 and save.sfx then
 				assets.crank_pull:play()
 			end
@@ -347,8 +349,7 @@ function weather:update()
 				local bytes = http:getBytesAvailable()
 				vars.data_response = http:read(bytes)
 				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
-					self:closeticker()
-					self:openui("noarea")
+					self:transitionscene(initialization, "noarea")
 					http:close()
 					return
 				else
@@ -371,12 +372,18 @@ function weather:update()
 					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
 					response_json = json.decode(vars.data_response_formatted)
 					http:close()
-					self:calcsuntimes()
 					vars.hourly_start = vars.localtime.hour
+					vars.sunrise = response_json.forecast.forecastday[1].astro.sunrise
+					vars.sunset = response_json.forecast.forecastday[1].astro.sunset
+					vars.sunrise2 = response_json.forecast.forecastday[2].astro.sunrise
+					vars.sunset2 = response_json.forecast.forecastday[2].astro.sunset
+					self:calcsuntimes()
+					vars.locallastminute = vars.localtime.minute
+					vars.hourly_start = vars.localtime.hour
+					vars.lastchecked = pd.getTime()
 					if sprites.fold ~= nil then
 						self:buildthefold()
 					end
-					vars.lastchecked = pd.getTime()
 					pd.display.flush()
 				end
 			end)
@@ -386,7 +393,7 @@ function weather:update()
 end
 
 function weather:calcsuntimes()
-	if pd.shouldDisplay24HourTime() then
+	if ((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) then
 		if find(vars.sunrise, "PM") then vars.sunrise = vars.sunrise:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunrise,1,2)) + 12) % 24), 1) end
 		if find(vars.sunset, "PM") then vars.sunset = vars.sunset:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunset,1,2)) + 12) % 24), 1) end
 		if find(vars.sunrise2, "PM") then vars.sunrise2 = vars.sunrise2:gsub("[0-9]+", format("%02d",(tonumber(sub(vars.sunrise2,1,2)) + 12) % 24), 1) end
@@ -697,7 +704,7 @@ function weather:buildthefold()
 		gfx.fillRect(0, 610, 400, 1500)
 		gfx.setColor(gfx.kColorBlack)
 		assets.smallcaps:drawText(text('lastchecked'), 10, 615)
-		assets.smallcaps:drawText((pd.shouldDisplay24HourTime() and format("%02d",vars.lastchecked.hour) .. ':' .. format("%02d",vars.lastchecked.minute)) or (((vars.lastchecked.hour % 12) == 0 and '12' or vars.lastchecked.hour % 12) .. ':' .. format("%02d",vars.lastchecked.minute) .. (vars.lastchecked.hour >= 12 and 'p' or 'a')), 10 + assets.smallcaps:getTextWidth(text('lastchecked')), 615)
+		assets.smallcaps:drawText((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",vars.lastchecked.hour) .. ':' .. format("%02d",vars.lastchecked.minute)) or (((vars.lastchecked.hour % 12) == 0 and '12' or vars.lastchecked.hour % 12) .. ':' .. format("%02d",vars.lastchecked.minute) .. (vars.lastchecked.hour >= 12 and 'p' or 'a')), 10 + assets.smallcaps:getTextWidth(text('lastchecked')), 615)
 	gfx.popContext()
 	sprites.fold:setImage(assets.thefold)
 end
