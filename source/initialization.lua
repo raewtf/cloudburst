@@ -21,11 +21,12 @@ function initialization:init(...)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(true) -- Should this scene redraw the sprites constantly?
 	pd.datastore.write(save)
+	pd.setAutoLockDisabled(false)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
 		menu:removeAllMenuItems()
-		pauseimage('initialization', false) -- TODO: make true later
+		pauseimage('initialization', true)
 	end
 
 	pd.keyboard.textChangedCallback = function()
@@ -434,6 +435,8 @@ function initialization:update()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
 				vars.data_response = http:read(bytes)
+				--print(vars.data_response)
+				--pd.datastore.write({'data_response',vars.data_response}, 'debug1')
 				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
 					self:closeticker()
 					self:openui("noarea")
@@ -466,15 +469,24 @@ function initialization:update()
 						end
 						index += 1
 					end
+					local response_start = 0
 					local response_end = 0
+					for i = 1, len(vars.data_response_formatted) do
+						if byte(vars.data_response_formatted, i) == byte("{") then
+							response_start = i
+							break
+						end
+					end
 					for i = len(vars.data_response_formatted), 1, -1 do
 						if byte(vars.data_response_formatted, i) == byte("}") then
 							response_end = i
 							break
 						end
 					end
-					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
+					vars.data_response_formatted = sub(vars.data_response_formatted, response_start, response_end)
+					--pd.datastore.write({'data_response_formatted',vars.data_response_formatted}, 'debug2')
 					response_json = json.decode(vars.data_response_formatted)
+					--pd.datastore.write({'response_json',response_json}, 'debug3')
 					http:close()
 					self:closeticker()
 					fademusic(5000)

@@ -24,6 +24,8 @@ local smp <const> = pd.sound.sampleplayer
 local fle <const> = pd.sound.fileplayer
 local text <const> = gfx.getLocalizedText
 local abs <const> = math.abs
+local floor <const> = math.floor
+local random <const> = math.random
 local format <const> = string.format
 local byte <const> = string.byte
 local char <const> = string.char
@@ -78,7 +80,7 @@ function pauseimage(scene, tip)
 	gfx.pushContext(pause_copy)
 	if tip then
 		pause:draw(0, 0)
-		roobert10:drawText(text('tip' .. math.random(1, 20)), 9, 152)
+		roobert10:drawText(text('tip' .. random(1, 20)), 9, 152)
 	else
 		pause_full:draw(0, 0)
 	end
@@ -102,6 +104,17 @@ end
 -- When the game closes...
 function pd.gameWillTerminate()
 	pd.datastore.write(save)
+	local img = gfx.getDisplayImage()
+	local byebye = gfx.imagetable.new('images/fade/fade')
+	local byebyeanim = gfx.animator.new(750, 1, #byebye)
+	local sfx = smp.new('audio/sfx/foldclose')
+	if save.sfx then sfx:play() end
+	gfx.setDrawOffset(0, 0)
+	while not byebyeanim:ended() do
+		img:draw(0, 0)
+		byebye:drawImage(floor(byebyeanim:currentValue()), 0, 0)
+		pd.display.flush()
+	end
 end
 
 function pd.deviceWillSleep()

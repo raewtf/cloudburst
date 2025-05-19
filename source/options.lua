@@ -11,6 +11,7 @@ function options:init(...)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(false) -- Should this scene redraw the sprites constantly?
 	pd.datastore.write(save)
+	pd.setAutoLockDisabled(false)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
@@ -491,13 +492,13 @@ function options:init(...)
 		gfx.setDitherPattern(0.50, gfx.image.kDitherTypeBayer2x2)
 		gfx.fillRoundRect(384, 51, 11, 151, 5)
 		gfx.setColor(gfx.kColorWhite)
-		gfx.fillRoundRect(382, 50 + ((vars.selection_timer.value-1) * (#vars.selections)), 15, 155/(#vars.selections/3), 8)
+		gfx.fillCircleAtPoint(389, 194 - ((#vars.selections - vars.selection_timer.value)/#vars.selections) * 150, 8)
 		gfx.setColor(gfx.kColorBlack)
-		gfx.drawRoundRect(382, 50 + ((vars.selection_timer.value-1) * (#vars.selections)), 15, 155/(#vars.selections/3), 8)
+		gfx.drawCircleAtPoint(389, 194 - ((#vars.selections - vars.selection_timer.value)/#vars.selections) * 150, 8)
 	end)
 
 	self:add()
-	pd.getCrankTicks(5)
+	pd.getCrankTicks(3)
 end
 
 function options:update()
@@ -507,7 +508,7 @@ function options:update()
 		gfx.sprite.redrawBackground()
 		vars.lastbump = false
 	end
-	local ticks = pd.getCrankTicks(5)
+	local ticks = pd.getCrankTicks(3)
 	if ticks ~= 0 and vars.selection > 0 then
 		if save.sfx then assets.crank:play() end
 		vars.selection += ticks

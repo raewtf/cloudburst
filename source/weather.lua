@@ -22,6 +22,7 @@ function weather:init(...)
 	local args = {...} -- Arguments passed in through the scene management will arrive here
 	gfx.sprite.setAlwaysRedraw(false) -- Should this scene redraw the sprites constantly?
 	pd.datastore.write(save)
+	pd.setAutoLockDisabled(true)
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
@@ -41,7 +42,7 @@ function weather:init(...)
 				scenemanager:transitionscene(credits)
 			end)
 		end
-		pauseimage('weather', false) -- TODO: make true later
+		pauseimage('weather', true)
 	end
 
 	function pd.gameWillResume()
@@ -82,6 +83,7 @@ function weather:init(...)
 		lo_power = false,
 		chargebool = pd.getPowerStatus().charging,
 		moon = random(1, 10),
+		autolockdisabled = true,
 	}
 
 	vars.hourly_start = vars.localtime.hour
@@ -332,10 +334,12 @@ function weather:update()
 	sec, ms = pd.getSecondsSinceEpoch()
 	vars.locallastminute = vars.localtime.minute
 	if lastminute ~= time.minute then
-		if pd.getBatteryPercentage() < save.autolock then
+		if pd.getBatteryPercentage() < save.autolock and vars.autolockdisabled then
 			pd.setAutoLockDisabled(false)
-		else
+			vars.autolockdisabled = false
+		elseif pd.getBatteryPercentage > save.autolock and not vars.autolockdisabled then
 			pd.setAutoLockDisabled(true)
+			vars.autolockdisabled = true
 		end
 		pd.display.flush()
 	end
@@ -528,8 +532,6 @@ function weather:drawsuntimes(y, left)
 	gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 	assets.fore[1]:draw((left and 20 or 210) + 30, y + 7)
 	assets.fore[2]:draw((left and 20 or 210) + 110, y + 7)
-	-- TODO: format " AM" and " PM" to "a" and "p"
-	-- TODO: account for 24-hour time
 	assets.roobert11:drawTextAligned(vars.sunrise, (left and 20 or 210) + 46, y + 30, kTextAlignment.center)
 	assets.roobert11:drawTextAligned(vars.sunset, (left and 20 or 210) + 126, y + 30, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunrise'), (left and 20 or 210) + 46, y + 48, kTextAlignment.center)
@@ -584,8 +586,6 @@ function weather:drawtomorrow(y)
 	assets.roobert11:drawText(text('hi2') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[2].day.maxtemp_c * 9/5) + 32 or response_json.forecast.forecastday[2].day.maxtemp_c) .. '° ' .. text('lo2') .. floor(save.temp == 'fahrenheit' and (response_json.forecast.forecastday[2].day.mintemp_c * 9/5) + 32 or response_json.forecast.forecastday[2].day.mintemp_c) .. '°', 90, y + 28)
 	assets.fore[1]:draw(240, y + 7)
 	assets.fore[2]:draw(320, y + 7)
-	-- TODO: format " AM" and " PM" to "a" and "p"
-	-- TODO: account for 24-hour time
 	assets.roobert11:drawTextAligned(vars.sunrise2, 256, y + 30, kTextAlignment.center)
 	assets.roobert11:drawTextAligned(vars.sunset2, 335, y + 30, kTextAlignment.center)
 	assets.smallcaps:drawTextAligned(text('sunrise'), 256, y + 48, kTextAlignment.center)
