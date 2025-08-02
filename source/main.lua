@@ -34,6 +34,11 @@ pd.display.setRefreshRate(30)
 gfx.setBackgroundColor(gfx.kColorWhite)
 gfx.setLineWidth(2)
 
+catalog = false
+if pd.metadata.bundleID == "wtf.rae.cloudburst" then
+	catalog = true
+end
+
 first_check = true
 key = nil
 
@@ -68,8 +73,6 @@ time = pd.getTime()
 if save.wallpaper == 5 and pd.datastore.readImage('images/custom') == nil then
 	save.wallpaper = 1
 end
-lasthour = 0
-lastminute = 0
 local pause = gfx.image.new('images/pause')
 local pause_full = gfx.image.new('images/pause_full')
 local roobert10 = gfx.font.new('fonts/roobert10')
@@ -226,10 +229,10 @@ function pd.update()
 	if save.invert == 3 then
 		if lasthour < 12 and time.hour >= 12 then
 			pd.display.setInverted(true)
+			lasthour = time.hour
 		elseif lasthour == 23 and time.hour == 0 then
 			pd.display.setInverted(false)
+			lasthour = time.hour
 		end
 	end
-	lasthour = time.hour
-	lastminute = time.minute
 end

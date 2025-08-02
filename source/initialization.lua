@@ -33,7 +33,7 @@ function initialization:init(...)
 		vars.text = pd.keyboard.text
 	end
 
-	response_json = {}
+	response_json = nil
 
 	pd.keyboard.keyboardWillHideCallback = function(bool)
 		if bool and vars.prompt == "welcome1" then
@@ -280,7 +280,7 @@ function initialization:init(...)
 		AButtonDown = function()
 			self:closeui()
 			pd.timer.performAfterDelay(3000, function()
-				if net.getStatus() == net.kStatusNotAvailable then
+				if net.getStatus() == 2 then
 					self:openui("nointernet")
 				else
 					if vars.prompttoopen ~= nil then
@@ -294,8 +294,24 @@ function initialization:init(...)
 						end
 					end
 				end
-				if save.sfx then assets.select:play() end
 			end)
+			if save.sfx then assets.select:play() end
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(1000, function()
+				response_json = nil
+				fademusic(5000)
+				if save.wallpaper == 2 then
+					pd.timer.performAfterDelay(250, function()
+						scenemanager:switchscene(weather, vars.earth_timer.timeLeft, vars.earth_timer.value, vars.stars_l.timeLeft, vars.stars_l.value, vars.stars_s.timeLeft, vars.stars_s.value, vars.crank_change)
+					end)
+				else
+					scenemanager:transitionscene(weather)
+				end
+			end)
+			if save.sfx then assets.back:play() end
 		end
 	}
 
@@ -415,7 +431,7 @@ function initialization:update()
 	end
 	vars.crank_change += pd.getCrankChange()
 	if vars.get_data then
-		if net.getStatus() == net.kStatusNotAvailable then
+		if net.getStatus() == 2 then
 			self:openui("nointernet")
 		else
 			if first_check and not save.setup then
@@ -435,7 +451,6 @@ function initialization:update()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
 				vars.data_response = http:read(bytes)
-				--print(vars.data_response)
 				--pd.datastore.write({'data_response',vars.data_response}, 'debug1')
 				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
 					self:closeticker()
@@ -485,9 +500,18 @@ function initialization:update()
 					end
 					vars.data_response_formatted = sub(vars.data_response_formatted, response_start, response_end)
 					--pd.datastore.write({'data_response_formatted',vars.data_response_formatted}, 'debug2')
+					response_json = {}
 					response_json = json.decode(vars.data_response_formatted)
+					if response_json == {} then response_json = nil end
 					--pd.datastore.write({'response_json',response_json}, 'debug3')
 					http:close()
+					if response_json ~= nil and catalog then
+						pd.scoreboards.addScore('hottestc', math.max(floor(response_json.current.temp_c), 0), function()
+							pd.scoreboards.addScore('hottestf', math.max(floor((response_json.current.temp_c * 9/5) + 32), 0), function()
+								pd.scoreboards.addScore('humidity', floor(response_json.current.humidity))
+							end)
+						end)
+					end
 					self:closeticker()
 					fademusic(5000)
 					if save.wallpaper == 2 then
@@ -566,7 +590,7 @@ function initialization:openui(prompt)
 			gfx.drawRoundRect(35, 90, 330, 90, 5)
 			gfx.setColor(gfx.kColorBlack)
 		elseif prompt == "nointernet" then
-			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
+			assets.roobert11:drawTextAligned(text('tryagain_clock'), 200, 200, kTextAlignment.center)
 		end
 	gfx.popContext()
 	if prompt == "nointernet" or prompt == "noarea" then

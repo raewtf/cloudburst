@@ -110,6 +110,7 @@ symbols = "🌐︎ⒶⒷⒹ⊙ ⒼⒽⒾⒿ ⓀⓁ Ⓜ ⒸⒻ"
 "options_controls" = "Ⓑ Back  |  Ⓛ/Ⓓ Choose   Ⓐ/Ⓚ Edit"
 "credits_controls" = "Ⓑ Back  |  Ⓛ/Ⓓ Scroll"
 "tryagain" = "Ⓐ Try Again"
+"tryagain_clock" = "Ⓑ Clock  |  Ⓐ Try Again"
 
 "refresh" = "refresh"
 
