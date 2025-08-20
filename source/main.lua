@@ -70,6 +70,7 @@ end
 savecheck()
 
 time = pd.getTime()
+lasthour = time.hour
 if save.wallpaper == 5 and pd.datastore.readImage('images/custom') == nil then
 	save.wallpaper = 1
 end

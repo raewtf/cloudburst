@@ -24,16 +24,17 @@ function weather:init(...)
 	pd.datastore.write(save)
 	pd.setAutoLockDisabled(true)
 
-	local lasthour = time.hour
 	local lastminute = time.minute
 
 	function pd.gameWillPause()
 		local menu = pd.getSystemMenu()
 		menu:removeAllMenuItems()
 		if not scenemanager.transitioning then
-			menu:addMenuItem(text('refresh'), function()
-				weather:refresh()
-			end)
+			if not vars.refreshing then
+				menu:addMenuItem(text('refresh'), function()
+					weather:refresh()
+				end)
+			end
 			menu:addMenuItem(text('options'), function()
 				vars.lo_power = false
 				pd.display.setRefreshRate(30)
@@ -86,6 +87,7 @@ function weather:init(...)
 		chargebool = pd.getPowerStatus().charging,
 		moon = random(1, 10),
 		autolockdisabled = true,
+		refreshing = false,
 	}
 
 	if response_json ~= nil then
@@ -155,18 +157,12 @@ function weather:init(...)
 			if response_json ~= nil then
 				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 				assets.roobert11:drawText(response_json.current.condition.text, 18, 205) -- todo: convert this to my own thing l8r
-			else
 			end
 			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			assets.default1:draw((vars.default1_timer.value // 2) * 2, 0)
 			assets.default2:draw(vars.default2_timer.value, 0)
 		elseif save.wallpaper == 2 then
-			if response_json ~= nil then
-				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18 + vars.ui_timer.value or 0)
-				assets.roobert11:drawText(response_json.current.condition.text, 18, 48 + vars.ui_timer.value)
-			else
-			end
 			assets.bg[floor(random(1, 3))]:draw(0, 0)
 			assets.stars_s:draw(((vars.stars_s.value + vars.crank_change) % 400) - 400, 0)
 			assets.stars_l:draw(((vars.stars_l.value + (vars.crank_change / 1.2)) % 400) - 400, 0)
@@ -174,30 +170,50 @@ function weather:init(...)
 			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 18 + vars.ui_timer.value, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 18 + vars.ui_timer.value)
+			if response_json ~= nil then
+				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 18 + vars.ui_timer.value or 0)
+				assets.roobert11:drawText(response_json.current.condition.text, 18, 48 + vars.ui_timer.value)
+			end
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		elseif save.wallpaper == 3 then
 			if response_json ~= nil then
 				assets.miko:drawTextAligned(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 215, 65, kTextAlignment.center)
 				assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
-			else
 			end
 			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 4 then
 			if response_json ~= nil then
 				assets.roobert11:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°, ' .. response_json.current.condition.text, 18, 205)
-			else
 			end
 			assets.miko:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute)), 200, 65, kTextAlignment.center)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 		elseif save.wallpaper == 5 then
+			assets.customimage:draw(0, 0)
+			if response_json ~= nil then
+				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 16, 175)
+				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 20, 175)
+				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 173)
+				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 177)
+				assets.roobert11:drawText(response_json.current.condition.text, 16, 205)
+				assets.roobert11:drawText(response_json.current.condition.text, 20, 205)
+				assets.roobert11:drawText(response_json.current.condition.text, 18, 203)
+				assets.roobert11:drawText(response_json.current.condition.text, 18, 207)
+			end
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 343, 205, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 347, 205, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 203, kTextAlignment.right)
+			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 207, kTextAlignment.right)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(353, 205)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(357, 205)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 203)
+			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 207)
+
+			gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 			if response_json ~= nil then
 				assets.roobert24:drawText(floor(save.temp == 'fahrenheit' and (response_json.current.temp_c * 9/5) + 32 or response_json.current.temp_c) .. '°', 18, 175)
 				assets.roobert11:drawText(response_json.current.condition.text, 18, 205)
-			else
 			end
-			assets.customimage:draw(0, 0)
-			gfx.setImageDrawMode(gfx.kDrawModeNXOR)
 			assets.roobert11:drawTextAligned((((save.twofour == 2) or (save.twofour == 1 and pd.shouldDisplay24HourTime())) and format("%02d",time.hour) .. ':' .. format("%02d",time.minute)) or (((time.hour % 12) == 0 and '12' or time.hour % 12) .. ':' .. format("%02d",time.minute) .. (time.hour >= 12 and 'p' or 'a')), 345, 205, kTextAlignment.right)
 			assets.battery[ceil(pd.getBatteryPercentage() / 17)]:draw(355, 205)
 			gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -454,6 +470,7 @@ function weather:update()
 					gfx.sprite.redrawBackground()
 					pd.display.flush()
 				end
+				vars.refreshing = false
 			end)
 		end
 		vars.get_data = false
@@ -732,6 +749,7 @@ function weather:drawmoonphase(num, x, y)
 end
 
 function weather:refresh()
+	vars.refreshing = true
 	vars.iwarnedyouabouthttpbroitoldyoudog = true
 	vars.http_opened = false
 	vars.get_data = true
