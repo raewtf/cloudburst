@@ -1,3 +1,7 @@
+import 'initialization'
+import 'options'
+import 'credits'
+
 -- Setting up consts
 local pd <const> = playdate
 local net <const> = pd.network
@@ -33,6 +37,9 @@ function weather:init(...)
 			if not vars.refreshing then
 				menu:addMenuItem(text('refresh'), function()
 					weather:refresh()
+				end)
+			else
+				menu:addMenuItem(text('refreshing'), function()
 				end)
 			end
 			menu:addMenuItem(text('options'), function()
@@ -235,24 +242,47 @@ function weather:init(...)
 	end
 	function classes.fold:update()
 		if self.open then
-			if pd.buttonJustPressed('down') and self.y >= 0 then
-				self.crank = 0
-				self.open = false
-				if save.sfx then assets.foldclose:play() end
-			end
-			if pd.buttonIsPressed('up') then
-				self:moveBy(0, -10)
-				if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
-					if sprites.fold.y <= -390 then
-						assets.crank_pull:play()
-					else
+			if save.invertfold then
+				if pd.buttonJustPressed('up') and self.y >= 0 then
+					self.crank = 0
+					self.open = false
+					if save.sfx then assets.foldclose:play() end
+				end
+				if pd.buttonIsPressed('down') then
+					self:moveBy(0, -10)
+					if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
+						if sprites.fold.y <= -390 then
+							assets.crank_pull:play()
+						else
+							assets.crank:play()
+						end
+					end
+				elseif pd.buttonIsPressed('up') then
+					self:moveBy(0, 10)
+					if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
 						assets.crank:play()
 					end
 				end
-			elseif pd.buttonIsPressed('down') then
-				self:moveBy(0, 10)
-				if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
-					assets.crank:play()
+			else
+				if pd.buttonJustPressed('down') and self.y >= 0 then
+					self.crank = 0
+					self.open = false
+					if save.sfx then assets.foldclose:play() end
+				end
+				if pd.buttonIsPressed('up') then
+					self:moveBy(0, -10)
+					if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
+						if sprites.fold.y <= -390 then
+							assets.crank_pull:play()
+						else
+							assets.crank:play()
+						end
+					end
+				elseif pd.buttonIsPressed('down') then
+					self:moveBy(0, 10)
+					if save.sfx and pd.getCurrentTimeMilliseconds() % 20 == 0 then
+						assets.crank:play()
+					end
 				end
 			end
 			self:moveBy(0, -pd.getCrankChange())
@@ -283,32 +313,63 @@ function weather:init(...)
 				if save.sfx then assets.foldclose:play() end
 			end
 		else
-			if pd.buttonJustPressed('up') then
-				if self.popped then
-					self.open = true
-					if save.sfx then assets.foldopen:play() end
-					self.crank = 0
-					self.popped = false
-				else
-					self.popped = true
-					if save.sfx then assets.foldtwang:play() end
-					self.timer:resetnew(1500, 1, 0)
-					self.crank = 30
-					self:moveTo(self.x, self.y += (211 - self.y) * 0.5)
-					self.timer.timerEndedCallback = function()
-						if self.popped then
-							self.crank = 0
-							self.popped = false
-							if save.sfx then assets.foldclosesoft:play() end
+			if save.invertfold then
+				if pd.buttonJustPressed('down') then
+					if self.popped then
+						self.open = true
+						if save.sfx then assets.foldopen:play() end
+						self.crank = 0
+						self.popped = false
+					else
+						self.popped = true
+						if save.sfx then assets.foldtwang:play() end
+						self.timer:resetnew(1500, 1, 0)
+						self.crank = 30
+						self:moveTo(self.x, self.y += (211 - self.y) * 0.5)
+						self.timer.timerEndedCallback = function()
+							if self.popped then
+								self.crank = 0
+								self.popped = false
+								if save.sfx then assets.foldclosesoft:play() end
+							end
 						end
 					end
 				end
-			end
-			if pd.buttonJustPressed('down') then
-				if self.popped then
-					self.crank = 0
-					self.popped = false
-					if save.sfx then assets.foldclosesoft:play() end
+				if pd.buttonJustPressed('up') then
+					if self.popped then
+						self.crank = 0
+						self.popped = false
+						if save.sfx then assets.foldclosesoft:play() end
+					end
+				end
+			else
+				if pd.buttonJustPressed('up') then
+					if self.popped then
+						self.open = true
+						if save.sfx then assets.foldopen:play() end
+						self.crank = 0
+						self.popped = false
+					else
+						self.popped = true
+						if save.sfx then assets.foldtwang:play() end
+						self.timer:resetnew(1500, 1, 0)
+						self.crank = 30
+						self:moveTo(self.x, self.y += (211 - self.y) * 0.5)
+						self.timer.timerEndedCallback = function()
+							if self.popped then
+								self.crank = 0
+								self.popped = false
+								if save.sfx then assets.foldclosesoft:play() end
+							end
+						end
+					end
+				end
+				if pd.buttonJustPressed('down') then
+					if self.popped then
+						self.crank = 0
+						self.popped = false
+						if save.sfx then assets.foldclosesoft:play() end
+					end
 				end
 			end
 			self.crank += pd.getCrankChange()
@@ -425,10 +486,20 @@ function weather:update()
 				http:setConnectTimeout(10)
 				local bytes = http:getBytesAvailable()
 				vars.data_response = http:read(bytes)
-				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
+				if (vars.data_response == nil) or (find(vars.data_response, "No matching location found.") or vars.data_response == "") then
 					self:transitionscene(initialization, "noarea")
 					http:close()
 					return
+				elseif find(vars.data_response, "error") then
+					if find(vars.data_response, "key is invalid") then
+						self:transitionscene(initialization, "maintenance")
+						http:close()
+						return
+					else
+						self:transitionscene(initialization, "error")
+						http:close()
+						return
+					end
 				else
 					-- chunk data here
 					vars.data_response_formatted = ""
@@ -449,11 +520,15 @@ function weather:update()
 					vars.data_response_formatted = sub(vars.data_response_formatted, 0, response_end)
 					response_json = json.decode(vars.data_response_formatted)
 					http:close()
-					pd.scoreboards.addScore('hottestc', math.max(floor(response_json.current.temp_c), 0), function()
-						pd.scoreboards.addScore('hottestf', math.max(floor((response_json.current.temp_c * 9/5) + 32), 0), function()
-							pd.scoreboards.addScore('humidity', floor(response_json.current.humidity))
+					if response_json ~= nil and catalog then
+						pd.scoreboards.addScore('hottestc', math.max(floor(response_json.current.temp_c), 0), function()
+							pd.scoreboards.addScore('hottestf', math.max(floor((response_json.current.temp_c * 9/5) + 32), 0), function()
+								pd.scoreboards.addScore('coolestk', math.max(floor(response_json.current.temp_c + 273.15), 0), function()
+									pd.scoreboards.addScore('humidity', floor(response_json.current.humidity))
+								end)
+							end)
 						end)
-					end)
+					end
 					vars.localtime = pd.timeFromEpoch(response_json.location.localtime_epoch - 946684800, ms)
 					vars.hourly_start = vars.localtime.hour
 					vars.sunrise = response_json.forecast.forecastday[1].astro.sunrise
@@ -807,7 +882,17 @@ function weather:buildthefold()
 			weather:drawtomorrow(450)
 			weather:drawmoon(530, true)
 			weather:drawsuntimes(530, false)
-			gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name) .. ', ' .. lower(response_json.location.region), 10, 8, 330, 30, 0, '...')
+			if response_json.location.name ~= nil and response_json.location.name ~= "" then
+				if response_json.location.region ~= nil and response_json.location.region ~= "" then
+					gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name) .. ', ' .. lower(response_json.location.region), 10, 8, 330, 30, 0, '...')
+				elseif response_json.location.country ~= nil and response_json.location.country ~= "" then
+					gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name) .. ', ' .. lower(response_json.location.country), 10, 8, 330, 30, 0, '...')
+				else
+					gfx.drawTextInRect(text('weatherin') .. lower(response_json.location.name), 10, 8, 330, 30, 0, '...')
+				end
+			else
+				gfx.drawTextInRect(text('weatherin') .. text('yourarea'), 10, 8, 330, 30, 0, '...')
+			end
 		else
 		end
 		assets.roobert11:drawText(text('crank'), 370, 7)

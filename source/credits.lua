@@ -32,7 +32,7 @@ function credits:init(...)
 		scroll = 0,
 		lastscroll = 0,
 		scrollmin = 0,
-		scrollmax = 215,
+		scrollmax = 280,
 	}
 	vars.creditsHandlers = {
 		BButtonDown = function()

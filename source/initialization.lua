@@ -1,4 +1,5 @@
 import 'Tanuk_CodeSequence'
+import 'weather'
 
 -- Setting up consts
 local pd <const> = playdate
@@ -107,6 +108,14 @@ function initialization:init(...)
 		AButtonDown = function()
 			pd.keyboard.show()
 			if save.sfx then assets.select:play() end
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			save.area = 'auto:ip'
+			pd.timer.performAfterDelay(300, function()
+				self:openui("setup1")
+			end)
 		end
 	}
 	vars.setup1Handlers = {
@@ -209,12 +218,30 @@ function initialization:init(...)
 		AButtonDown = function()
 			pd.keyboard.show()
 			if save.sfx then assets.select:play() end
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			save.area = 'auto:ip'
+			pd.timer.performAfterDelay(300, function()
+				vars.http_opened = false
+				vars.get_data = true
+			end)
 		end
 	}
 	vars.changeareaHandlers = {
 		AButtonDown = function()
 			pd.keyboard.show()
 			if save.sfx then assets.select:play() end
+		end,
+
+		BButtonDown = function()
+			self:closeui()
+			save.area = 'auto:ip'
+			pd.timer.performAfterDelay(300, function()
+				vars.http_opened = false
+				vars.get_data = true
+			end)
 		end
 	}
 	vars.changeareamultHandlers = {
@@ -265,7 +292,7 @@ function initialization:init(...)
 		end,
 
 		BButtonDown = function()
-			if vars.result > 2 then
+			if (vars.result > 2) or (vars.result == 2 and save.areas[1] ~= save.area) then
 				if save.sfx then assets.sfx_poof:play() end
 				vars.poof_timer:resetnew(150, 1, 5, pd.easingFunctions.outSine)
 				table.remove(save.areas, vars.result-1)
@@ -314,6 +341,50 @@ function initialization:init(...)
 			if save.sfx then assets.back:play() end
 		end
 	}
+	vars.errorHandlers = {
+		AButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				if net.getStatus() == 2 then
+					self:openui("nointernet")
+				else
+					if vars.prompttoopen ~= nil then
+						self:openui(vars.prompttoopen)
+					else
+						if save.setup then
+							self:openui("welcome1")
+						else
+							vars.http_opened = false
+							vars.get_data = true
+						end
+					end
+				end
+			end)
+			if save.sfx then assets.select:play() end
+		end
+	}
+	vars.maintenanceHandlers = {
+		AButtonDown = function()
+			self:closeui()
+			pd.timer.performAfterDelay(300, function()
+				if net.getStatus() == 2 then
+					self:openui("nointernet")
+				else
+					if vars.prompttoopen ~= nil then
+						self:openui(vars.prompttoopen)
+					else
+						if save.setup then
+							self:openui("welcome1")
+						else
+							vars.http_opened = false
+							vars.get_data = true
+						end
+					end
+				end
+			end)
+			if save.sfx then assets.select:play() end
+		end
+	}
 
 	vars.earth_timer.repeats = true
 	vars.stars_l.repeats = true
@@ -358,15 +429,18 @@ function initialization:init(...)
 					for i = 1, #save.areas+1 do
 						gfx.drawTextInRect(save.areas[i-1] or text('newlocation'), 50, 125 + (25 * i) + vars.ui_timer.value - (25 * vars.result_timer.value), 190, 25, 0, '...')
 					end
+					if save.areas[1] == save.area then
 					gfx.setColor(gfx.kColorWhite)
 					gfx.fillRoundRect(350, 175 + vars.ui_timer.value - (25 * vars.result_timer.value), -100, 20, 3)
 					gfx.setImageDrawMode(gfx.kDrawModeCopy)
 					assets.smallcaps:drawTextAligned(text('current'), 300, 176 + vars.ui_timer.value - (25 * vars.result_timer.value), kTextAlignment.center)
+					end
+					gfx.setImageDrawMode(gfx.kDrawModeCopy)
 					gfx.setColor(gfx.kColorXOR)
 					gfx.fillRect(40, 123 + vars.ui_timer.value, 320, 24)
 					gfx.setColor(gfx.kColorBlack)
 					gfx.clearClipRect()
-					if vars.result <= 2 then
+					if (vars.result == 1) or (vars.result == 2 and save.areas[1] == save.area) then
 						assets.roobert11:drawTextAligned(text('changeareamult_controlsii'), 200, 200 + vars.ui_timer.value, kTextAlignment.center)
 					else
 						assets.roobert11:drawTextAligned(text('changeareamult_controls'), 200, 200 + vars.ui_timer.value, kTextAlignment.center)
@@ -452,11 +526,23 @@ function initialization:update()
 				local bytes = http:getBytesAvailable()
 				vars.data_response = http:read(bytes)
 				--pd.datastore.write({'data_response',vars.data_response}, 'debug1')
-				if find(vars.data_response, "No matching location found.") or vars.data_response == "" then
+				if (vars.data_response == nil) or (find(vars.data_response, "No matching location found.") or vars.data_response == "") then
 					self:closeticker()
 					self:openui("noarea")
 					http:close()
 					return
+				elseif find(vars.data_response, "error") then
+					if find(vars.data_response, "key is invalid") then
+						self:closeticker()
+						self:openui("maintenance")
+						http:close()
+						return
+					else
+						self:closeticker()
+						self:openui("error")
+						http:close()
+						return
+					end
 				else
 					if save.recentareas == 0 then
 						save.areas = {}
@@ -466,7 +552,9 @@ function initialization:update()
 								table.remove(save.areas, i)
 							end
 						end
-						table.insert(save.areas, 1, save.area)
+						if save.area ~= 'auto:ip' then
+							table.insert(save.areas, 1, save.area)
+						end
 						if save.recentareas ~= 51 then
 							if #save.areas > save.recentareas then
 								for i = 1, #save.areas - save.recentareas do
@@ -508,7 +596,9 @@ function initialization:update()
 					if response_json ~= nil and catalog then
 						pd.scoreboards.addScore('hottestc', math.max(floor(response_json.current.temp_c), 0), function()
 							pd.scoreboards.addScore('hottestf', math.max(floor((response_json.current.temp_c * 9/5) + 32), 0), function()
-								pd.scoreboards.addScore('humidity', floor(response_json.current.humidity))
+								pd.scoreboards.addScore('coolestk', math.max(floor(response_json.current.temp_c + 273.15), 0), function()
+									pd.scoreboards.addScore('humidity', floor(response_json.current.humidity))
+								end)
 							end)
 						end)
 					end
@@ -564,7 +654,7 @@ function initialization:openui(prompt)
 			gfx.drawRoundRect(40, 150, 320, 30, 5)
 			gfx.setColor(gfx.kColorBlack)
 			vars.text = ""
-			assets.roobert11:drawTextAligned(text('keyboard'), 200, 200, kTextAlignment.center)
+			assets.roobert11:drawTextAligned(text('autolocatekeyboard'), 200, 200, kTextAlignment.center)
 		elseif prompt == "setup1" then
 			gfx.setColor(gfx.kColorWhite)
 			gfx.fillRoundRect(40, 120, 130, 40, 5)
@@ -591,9 +681,11 @@ function initialization:openui(prompt)
 			gfx.setColor(gfx.kColorBlack)
 		elseif prompt == "nointernet" then
 			assets.roobert11:drawTextAligned(text('tryagain_clock'), 200, 200, kTextAlignment.center)
+		elseif prompt == "error" or prompt == "maintenance" then
+			assets.roobert11:drawTextAligned(text('tryagain'), 200, 200, kTextAlignment.center)
 		end
 	gfx.popContext()
-	if prompt == "nointernet" or prompt == "noarea" then
+	if prompt == "nointernet" or prompt == "noarea" or prompt == "error" or prompt == "maintenance" then
 		if save.sfx then assets.error:play() end
 	else
 		if save.sfx then assets.sfx_ui:play() end

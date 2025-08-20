@@ -11,9 +11,6 @@ import 'CoreLibs/keyboard'
 import 'CoreLibs/animation'
 import 'scenemanager'
 import 'initialization'
-import 'weather'
-import 'options'
-import 'credits'
 scenemanager = scenemanager()
 
 -- Setting up basic SDK params
@@ -64,6 +61,7 @@ function savecheck()
 	if save.sfx == nil then save.sfx = true end
 	if save.music == nil then save.music = true end
 	if save.setup == nil then save.setup = true end
+	if save.invertfold == nil then save.invertfold = false end
 end
 
 -- ... now we run that!
