@@ -33,7 +33,7 @@ function options:init(...)
 	gfx.setFont(assets.smallcaps)
 
 	vars = {
-		selections = {'changearea', 'recentareas', 'temp', 'meas', 'refresh', 'lock', 'twofour', 'music', 'sfx', 'wallpaper', 'invertfold', 'invert'},
+		selections = {'changearea', 'recentareas', 'temp', 'meas', 'refresh', 'lock', 'twofour', 'music', 'sfx', 'wallpaper', 'invertfold', 'smoothanimations', 'invert'},
 		selection = 1,
 		selection_timer = pd.timer.new(1, 1, 1),
 		lastbump = false,
@@ -148,14 +148,20 @@ function options:init(...)
 				save.wallpaper -= 1
 				if save.wallpaper < 1 then
 					if pd.datastore.readImage('images/custom') ~= nil then
-						save.wallpaper = 5
+						save.wallpaper = 8
 					else
-						save.wallpaper = 4
+						save.wallpaper = 7
 					end
 				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invertfold' then
 				save.invertfold = not save.invertfold
+				if save.sfx then assets.move:play() end
+			elseif vars.selections[vars.selection] == 'smoothanimations' then
+				save.smoothanimations -= 1
+				if save.smoothanimations < 1 then
+					save.smoothanimations = 3
+				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invert' then
 				save.invert -= 1
@@ -177,6 +183,7 @@ function options:init(...)
 				if save.sfx then assets.move:play() end
 			end
 			gfx.sprite.redrawBackground()
+			pd.datastore.write(save)
 		end,
 
 		rightButtonDown = function()
@@ -251,17 +258,23 @@ function options:init(...)
 			elseif vars.selections[vars.selection] == 'wallpaper' then
 				save.wallpaper += 1
 				if pd.datastore.readImage('images/custom') ~= nil then
-					if save.wallpaper > 5 then
+					if save.wallpaper > 8 then
 						save.wallpaper = 1
 					end
 				else
-					if save.wallpaper > 4 then
+					if save.wallpaper > 7 then
 						save.wallpaper = 1
 					end
 				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invertfold' then
 				save.invertfold = not save.invertfold
+				if save.sfx then assets.move:play() end
+			elseif vars.selections[vars.selection] == 'smoothanimations' then
+				save.smoothanimations += 1
+				if save.smoothanimations > 3 then
+					save.smoothanimations = 1
+				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invert' then
 				save.invert += 1
@@ -283,6 +296,7 @@ function options:init(...)
 				if save.sfx then assets.move:play() end
 			end
 			gfx.sprite.redrawBackground()
+			pd.datastore.write(save)
 		end,
 
 		AButtonDown = function()
@@ -371,17 +385,23 @@ function options:init(...)
 			elseif vars.selections[vars.selection] == 'wallpaper' then
 				save.wallpaper += 1
 				if pd.datastore.readImage('images/custom') ~= nil then
-					if save.wallpaper > 5 then
+					if save.wallpaper > 8 then
 						save.wallpaper = 1
 					end
 				else
-					if save.wallpaper > 4 then
+					if save.wallpaper > 7 then
 						save.wallpaper = 1
 					end
 				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invertfold' then
 				save.invertfold = not save.invertfold
+				if save.sfx then assets.move:play() end
+			elseif vars.selections[vars.selection] == 'smoothanimations' then
+				save.smoothanimations += 1
+				if save.smoothanimations > 3 then
+					save.smoothanimations = 1
+				end
 				if save.sfx then assets.move:play() end
 			elseif vars.selections[vars.selection] == 'invert' then
 				save.invert += 1
@@ -403,6 +423,7 @@ function options:init(...)
 				if save.sfx then assets.move:play() end
 			end
 			gfx.sprite.redrawBackground()
+			pd.datastore.write(save)
 		end,
 
 		BButtonDown = function()
@@ -445,8 +466,9 @@ function options:init(...)
 		assets.roobert11:drawTextAligned(text('options_sfx'), 190, 394 - (30 * vars.selection_timer.value), kTextAlignment.right)
 		assets.roobert11:drawTextAligned(text('options_wallpaper'), 190, 424 - (30 * vars.selection_timer.value), kTextAlignment.right)
 		assets.roobert11:drawTextAligned(text('options_invertfold'), 190, 454 - (30 * vars.selection_timer.value), kTextAlignment.right)
-		assets.roobert11:drawTextAligned(text('options_invert'), 190, 484 - (30 * vars.selection_timer.value), kTextAlignment.right)
-		if save.found_retro then assets.roobert11:drawTextAligned(text('options_retro'), 190, 514 - (30 * vars.selection_timer.value), kTextAlignment.right) end
+		assets.roobert11:drawTextAligned(text('options_smoothanimations'), 190, 484 - (30 * vars.selection_timer.value), kTextAlignment.right)
+		assets.roobert11:drawTextAligned(text('options_invert'), 190, 514 - (30 * vars.selection_timer.value), kTextAlignment.right)
+		if save.found_retro then assets.roobert11:drawTextAligned(text('options_retro'), 190, 544 - (30 * vars.selection_timer.value), kTextAlignment.right) end
 		gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer2x2)
 		gfx.fillRoundRect(210, 154 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 184 - (30 * vars.selection_timer.value), 125, 20, 5)
@@ -460,7 +482,8 @@ function options:init(...)
 		gfx.fillRoundRect(210, 424 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 454 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.fillRoundRect(210, 484 - (30 * vars.selection_timer.value), 125, 20, 5)
-		if save.found_retro then gfx.fillRoundRect(210, 514 - (30 * vars.selection_timer.value), 125, 20, 5) end
+		gfx.fillRoundRect(210, 514 - (30 * vars.selection_timer.value), 125, 20, 5)
+		if save.found_retro then gfx.fillRoundRect(210, 544 - (30 * vars.selection_timer.value), 125, 20, 5) end
 		gfx.setColor(gfx.kColorBlack)
 		gfx.drawRoundRect(210, 154 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 184 - (30 * vars.selection_timer.value), 125, 20, 5)
@@ -474,7 +497,8 @@ function options:init(...)
 		gfx.drawRoundRect(210, 424 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 454 - (30 * vars.selection_timer.value), 125, 20, 5)
 		gfx.drawRoundRect(210, 484 - (30 * vars.selection_timer.value), 125, 20, 5)
-		if save.found_retro then gfx.drawRoundRect(210, 514 - (30 * vars.selection_timer.value), 125, 20, 5) end
+		gfx.drawRoundRect(210, 514 - (30 * vars.selection_timer.value), 125, 20, 5)
+		if save.found_retro then gfx.drawRoundRect(210, 544 - (30 * vars.selection_timer.value), 125, 20, 5) end
 		gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
 		if save.area == 'auto:ip' then
 			gfx.drawTextInRect(text('autoip'), 272 - 60, 156 - (30 * vars.selection_timer.value), 120, 30, 0, '...', kTextAlignment.center)
@@ -491,8 +515,9 @@ function options:init(...)
 		assets.smallcaps:drawTextAligned(text('options_' .. tostring(save.sfx)), 272, 396 - (30 * vars.selection_timer.value), kTextAlignment.center)
 		assets.smallcaps:drawTextAligned(text('options_wallpaper' .. save.wallpaper), 272, 426 - (30 * vars.selection_timer.value), kTextAlignment.center)
 		assets.smallcaps:drawTextAligned(text('options_invertfold_' .. tostring(save.invertfold)), 272, 456 - (30 * vars.selection_timer.value), kTextAlignment.center)
-		assets.smallcaps:drawTextAligned(text('options_invert' .. save.invert), 272, 486 - (30 * vars.selection_timer.value), kTextAlignment.center)
-		if save.found_retro then assets.smallcaps:drawTextAligned(text('options_' .. tostring(save.retro)), 272, 516 - (30 * vars.selection_timer.value), kTextAlignment.center) end
+		assets.smallcaps:drawTextAligned(text('options_smoothanimations' .. save.smoothanimations), 272, 486 - (30 * vars.selection_timer.value), kTextAlignment.center)
+		assets.smallcaps:drawTextAligned(text('options_invert' .. save.invert), 272, 516 - (30 * vars.selection_timer.value), kTextAlignment.center)
+		if save.found_retro then assets.smallcaps:drawTextAligned(text('options_' .. tostring(save.retro)), 272, 546 - (30 * vars.selection_timer.value), kTextAlignment.center) end
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		gfx.setColor(gfx.kColorWhite)
 		gfx.fillRect(0, 0, 400, 45)

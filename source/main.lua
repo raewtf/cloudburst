@@ -29,6 +29,7 @@ local char <const> = string.char
 
 pd.display.setRefreshRate(30)
 gfx.setBackgroundColor(gfx.kColorWhite)
+gfx.setLineCapStyle(gfx.kLineCapStyleRound)
 gfx.setLineWidth(2)
 
 catalog = false
@@ -56,6 +57,7 @@ function savecheck()
 	save.invert = save.invert or 1
 	save.twofour = save.twofour or 1
 	save.recentareas = save.recentareas or 10
+	save.smoothanimations = save.smoothanimations or 3
 	if save.found_retro == nil then save.found_retro = false end
 	if save.retro == nil then save.retro = false end
 	if save.sfx == nil then save.sfx = true end
@@ -69,7 +71,7 @@ savecheck()
 
 time = pd.getTime()
 lasthour = time.hour
-if save.wallpaper == 5 and pd.datastore.readImage('images/custom') == nil then
+if save.wallpaper == 8 and pd.datastore.readImage('images/custom') == nil then
 	save.wallpaper = 1
 end
 local pause = gfx.image.new('images/pause')
